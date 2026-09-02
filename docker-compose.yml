@@ -1,0 +1,8 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    # Note: the SQLite database lives inside the container and is ephemeral
+    # (reset when the container is removed). That is fine for this demo. To keep
+    # it, mount a volume for /app/db.sqlite3.
