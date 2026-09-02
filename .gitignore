@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Virtual env (recreated with `uv sync`)
+.venv/
+
+# Django
+db.sqlite3
+db.sqlite3-journal
+*.log
+
+# Env / secrets
+.env
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
