@@ -112,3 +112,43 @@ backlog.md       the task backlog
 Dockerfile       container image (uv-based)
 docker-compose.yml
 ```
+
+---
+
+## Learning in public (draft posts)
+
+Two ready-to-post drafts — replace `<repo link>` before posting.
+
+### LinkedIn
+
+> 🚀 Week 1 of the AI Dev Tools Zoomcamp (@DataTalksClub) — done.
+>
+> Instead of the suggested "household chores" idea, I turned the vague brief into
+> something from my own world: a **Dataset Freshness Tracker** — a Django app that tells
+> a data team which datasets are **stale or failing right now**.
+>
+> The week wasn't really about Django, it was about the method:
+> - ✅ Turn a vague idea into a written spec (separating what's observed from what's assumed, weak points called out)
+> - ✅ Break the spec into a small backlog
+> - ✅ Let an AI coding agent (Claude) implement it task by task
+> - ✅ Cover the freshness logic with tests (14 green)
+>
+> Honest scope: it's a demo — refreshes are logged manually, and a fixed-interval cadence
+> flags weekend "staleness" as a false positive. Both are written down as v2 work, because
+> a spec that hides its assumptions isn't a spec.
+>
+> Repo: `<repo link>`
+> Who else is following the cohort? 👇
+> #dataengineering #AI #Django
+
+### X / Twitter
+
+> 🤖 Week 1 of the AI Dev Tools Zoomcamp (@DataTalksClub):
+>
+> Turned "build any Django app" into a Dataset Freshness Tracker 📊
+> ✅ Spec first, code second
+> ✅ Backlog-driven, built with Claude
+> ✅ Freshness logic (fresh / stale / failing) + 14 tests
+>
+> It's a demo, limitations documented. Repo: `<repo link>`
+
