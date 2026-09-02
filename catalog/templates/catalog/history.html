@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Refresh history{% endblock %}
+{% block content %}
+  {% if not logs %}
+    <div class="empty">No refresh attempts logged yet.</div>
+  {% else %}
+    <table>
+      <thead>
+        <tr><th>When</th><th>Dataset</th><th>Source</th><th>Outcome</th><th>Rows</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+          <tr>
+            <td class="muted">{{ log.refreshed_at|date:"Y-m-d H:i" }}</td>
+            <td>{{ log.dataset.name }}</td>
+            <td>{{ log.dataset.source.name }}</td>
+            <td>
+              {% if log.status == "success" %}
+                <span class="badge fresh">Success</span>
+              {% else %}
+                <span class="badge failing">Failed</span>
+              {% endif %}
+            </td>
+            <td>{{ log.row_count|default:"—" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}

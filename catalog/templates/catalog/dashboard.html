@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+  <div class="cards">
+    <div class="stat"><div class="n">{{ summary.total }}</div><div class="l">Datasets</div></div>
+    <div class="stat"><div class="n" style="color:var(--fresh)">{{ summary.fresh }}</div><div class="l">Fresh</div></div>
+    <div class="stat"><div class="n" style="color:var(--stale)">{{ summary.stale }}</div><div class="l">Stale</div></div>
+    <div class="stat"><div class="n" style="color:var(--fail)">{{ summary.failing }}</div><div class="l">Failing</div></div>
+    <div class="stat"><div class="n" style="color:var(--never)">{{ summary.never }}</div><div class="l">Never</div></div>
+  </div>
+
+  {% if summary.attention %}
+    <p class="muted">{{ summary.attention }} dataset{{ summary.attention|pluralize }} need attention (shown first).</p>
+  {% endif %}
+
+  {% if not rows %}
+    <div class="empty">No active datasets. Add some in the <a href="/admin/">admin</a>
+      or run <code>python manage.py seed_demo</code>.</div>
+  {% else %}
+    <table>
+      <thead>
+        <tr><th>Dataset</th><th>Source</th><th>Owner</th><th>Cadence</th>
+            <th>Last success</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td><strong>{{ row.ds.name }}</strong></td>
+            <td>{{ row.ds.source.name }} <span class="muted">({{ row.ds.source.get_kind_display }})</span></td>
+            <td>{{ row.ds.owner|default:"—" }}</td>
+            <td>{{ row.ds.get_cadence_display }}</td>
+            <td>{% if row.hours is not None %}{{ row.hours }}h ago{% else %}<span class="muted">never</span>{% endif %}</td>
+            <td><span class="badge {{ row.status }}">{{ row.status|capfirst }}</span></td>
+            <td>
+              <form method="post" action="{% url 'catalog:mark_refreshed' row.ds.id %}" class="actions">
+                {% csrf_token %}
+                <button class="ok" type="submit" name="outcome" value="success">✓ Refreshed</button>
+                <button class="bad" type="submit" name="outcome" value="failed">✕ Failed</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+{% endblock %}
