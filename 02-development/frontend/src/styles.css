@@ -1,0 +1,47 @@
+:root {
+  --bg: #f4f5f7; --panel: #fff; --line: #e2e5ea; --ink: #1c2430;
+  --muted: #6b7280; --accent: #2563eb; --accent-ink: #fff;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+.wrap { max-width: 860px; margin: 0 auto; padding: 20px 16px 48px; }
+
+header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+header h1 { margin: 0 0 8px; font-size: 22px; }
+.api { color: var(--muted); font-size: 12px; }
+
+.error { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca;
+  padding: 10px 12px; border-radius: 8px; margin: 8px 0; }
+
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+  padding: 16px; margin-top: 14px; }
+.panel h2 { margin: 0 0 12px; font-size: 15px; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--muted); }
+
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+@media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--line); }
+th { font-size: 12px; color: var(--muted); text-transform: uppercase; }
+td.team { text-align: left; font-weight: 600; }
+td.pts { font-weight: 700; }
+tr:last-child td { border-bottom: none; }
+
+input, select, button { font: inherit; padding: 8px 10px; border-radius: 8px;
+  border: 1px solid var(--line); background: #fff; color: var(--ink); }
+button { background: var(--accent); color: var(--accent-ink); border-color: var(--accent);
+  cursor: pointer; }
+button:hover { opacity: .92; }
+
+.row { display: flex; gap: 8px; }
+.row input { flex: 1; }
+.match-form { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.match-form select { flex: 1; min-width: 120px; }
+.match-form input[type="number"] { width: 60px; text-align: center; }
+
+.muted { color: var(--muted); }
+.matches { list-style: none; padding: 0; margin: 0; }
+.matches li { padding: 8px 0; border-bottom: 1px solid var(--line); }
+.matches li:last-child { border-bottom: none; }

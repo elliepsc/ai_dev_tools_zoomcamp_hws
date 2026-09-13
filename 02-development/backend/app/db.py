@@ -1,0 +1,27 @@
+"""Database setup — database-agnostic via SQLAlchemy.
+
+The engine is chosen from the DATABASE_URL environment variable, defaulting to a
+local SQLite file. Swapping to Postgres is just a different DATABASE_URL.
+"""
+import os
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import DeclarativeBase, sessionmaker
+
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./scoreboard.db")
+
+connect_args = {"check_same_thread": False} if DATABASE_URL.startswith("sqlite") else {}
+engine = create_engine(DATABASE_URL, connect_args=connect_args)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

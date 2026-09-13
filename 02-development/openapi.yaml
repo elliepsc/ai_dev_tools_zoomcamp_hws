@@ -1,0 +1,267 @@
+openapi: 3.1.0
+info:
+  title: "TopTable \u2014 League Scoreboard API"
+  version: 1.0.0
+paths:
+  /api/health:
+    get:
+      summary: Health
+      operationId: health_api_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/teams:
+    get:
+      summary: List Teams
+      operationId: list_teams_api_teams_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/TeamOut'
+                type: array
+                title: Response List Teams Api Teams Get
+    post:
+      summary: Create Team
+      operationId: create_team_api_teams_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TeamCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/matches:
+    get:
+      summary: List Matches
+      operationId: list_matches_api_matches_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/MatchOut'
+                type: array
+                title: Response List Matches Api Matches Get
+    post:
+      summary: Create Match
+      operationId: create_match_api_matches_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MatchCreate'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MatchOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/standings:
+    get:
+      summary: Standings
+      operationId: standings_api_standings_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/StandingRow'
+                type: array
+                title: Response Standings Api Standings Get
+components:
+  schemas:
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    MatchCreate:
+      properties:
+        home_team_id:
+          type: integer
+          title: Home Team Id
+        away_team_id:
+          type: integer
+          title: Away Team Id
+        home_score:
+          type: integer
+          minimum: 0.0
+          title: Home Score
+        away_score:
+          type: integer
+          minimum: 0.0
+          title: Away Score
+        round:
+          type: integer
+          minimum: 1.0
+          title: Round
+          default: 1
+      type: object
+      required:
+      - home_team_id
+      - away_team_id
+      - home_score
+      - away_score
+      title: MatchCreate
+    MatchOut:
+      properties:
+        home_team_id:
+          type: integer
+          title: Home Team Id
+        away_team_id:
+          type: integer
+          title: Away Team Id
+        home_score:
+          type: integer
+          minimum: 0.0
+          title: Home Score
+        away_score:
+          type: integer
+          minimum: 0.0
+          title: Away Score
+        round:
+          type: integer
+          minimum: 1.0
+          title: Round
+          default: 1
+        id:
+          type: integer
+          title: Id
+      type: object
+      required:
+      - home_team_id
+      - away_team_id
+      - home_score
+      - away_score
+      - id
+      title: MatchOut
+    StandingRow:
+      properties:
+        team_id:
+          type: integer
+          title: Team Id
+        team:
+          type: string
+          title: Team
+        played:
+          type: integer
+          title: Played
+        won:
+          type: integer
+          title: Won
+        drawn:
+          type: integer
+          title: Drawn
+        lost:
+          type: integer
+          title: Lost
+        goals_for:
+          type: integer
+          title: Goals For
+        goals_against:
+          type: integer
+          title: Goals Against
+        goal_diff:
+          type: integer
+          title: Goal Diff
+        points:
+          type: integer
+          title: Points
+      type: object
+      required:
+      - team_id
+      - team
+      - played
+      - won
+      - drawn
+      - lost
+      - goals_for
+      - goals_against
+      - goal_diff
+      - points
+      title: StandingRow
+    TeamCreate:
+      properties:
+        name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Name
+      type: object
+      required:
+      - name
+      title: TeamCreate
+    TeamOut:
+      properties:
+        id:
+          type: integer
+          title: Id
+        name:
+          type: string
+          title: Name
+      type: object
+      required:
+      - id
+      - name
+      title: TeamOut
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
