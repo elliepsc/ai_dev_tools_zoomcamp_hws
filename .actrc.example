@@ -1,0 +1,14 @@
+# Copy to .actrc (gitignored) at the repo root and run act from the root —
+# the HW3 workflow now lives at .github/workflows/hw3-ci.yml, not inside
+# 03-deployment/.
+#
+# --network kind: without it, act's job container can't reach the kind
+# control-plane container directly, and the workflow's ACT-detection step
+# fails loudly instead of guessing a workaround (see hw3-ci.yml). Requires a
+# kind cluster (and therefore the "kind" Docker network) to already exist —
+# run `kind create cluster` at least once before the first act run.
+-P ubuntu-latest=catthehacker/ubuntu:act-latest
+--network kind
+
+# Exact command (not relying on .actrc), run from the repo root:
+#   act push -W .github/workflows/hw3-ci.yml --network kind -P ubuntu-latest=catthehacker/ubuntu:act-latest

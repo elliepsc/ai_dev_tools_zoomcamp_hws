@@ -100,7 +100,7 @@ l'API FastAPI et du dashboard fournis, et on ajoute :
 
 ### Q6 : garder la version existante et arrêter le déploiement
 
-- Dans `ci.yml`, le job `deploy` a `needs: test` : si un test échoue, on ne
+- Dans `hw3-ci.yml`, le job `deploy` a `needs: test` : si un test échoue, on ne
   construit pas d'image, on ne charge rien dans kind et on ne touche pas au
   cluster.
 - **Vérifié** : j'ai cassé volontairement une assertion du test d'intégration et
@@ -130,7 +130,7 @@ l'API FastAPI et du dashboard fournis, et on ajoute :
 | `compose.yaml` | Services `postgres` (healthcheck `pg_isready`, volume `pgdata`) et `app` (`depends_on: service_healthy`, healthcheck sur `/ready`). |
 | `k8s/` | Namespace, Secret (identifiants de démo), StatefulSet Postgres avec PVC de 1 Gi, readiness et liveness, Services, ConfigMap, Deployment à 2 réplicas (startup, readiness sur `/ready`, liveness sur `/health`, rootfs en lecture seule, capabilities supprimées), `kustomization.yaml` avec override du tag d'image. |
 | `kind-config.yaml` | Configuration du cluster kind. |
-| `.github/workflows/ci.yml` | Job `test` (Postgres en service, tests unitaires du starter et tests d'intégration sur PG) puis job `deploy` (tag unique `<sha>-<timestamp>`, build, `kind load`, `kubectl apply -k`, `rollout status` avec `rollout undo` si échec, smoke test qui compare le heading déployé à celui du code). |
+| `../.github/workflows/hw3-ci.yml` (racine du monorepo) | Job `test` (Postgres en service, tests unitaires du starter et tests d'intégration sur PG) puis job `deploy` (tag unique `<sha>-<timestamp>`, build, `kind load`, `kubectl apply -k`, `rollout status` avec `rollout undo` si échec, smoke test qui compare le heading déployé à celui du code). Déclenché uniquement par les changements sous `03-deployment/**`. |
 | `scripts/demo_flow.py` | Rejoue le scénario n°1 et affiche un token à coller dans le dashboard. |
 | `scripts/export_session.py` | Convertit un transcript Claude Code (JSONL) en Markdown lisible (voir « Garder la trace du travail de Claude Code »). |
 | `pyproject.toml` | Config pytest et `exclude-newer` fixé dans le projet (voir les points de vigilance). |
@@ -169,6 +169,26 @@ Python 3.11 n'est pas un prérequis : uv le télécharge si besoin (`.python-ver
 ```bash
 git clone https://github.com/<ton-user>/agent-relay.git && cd agent-relay
 uv sync --locked
+```
+
+### Windows / Git Bash
+
+Sur Windows, plusieurs installs du même outil peuvent coexister sur le PATH (plusieurs
+`uv`, ou le `kubectl` embarqué par Docker Desktop qui passe avant une version épinglée).
+Deux points à connaître :
+
+- **`MSYS_NO_PATHCONV=1`** évite que Git Bash/MSYS réinterprète comme des chemins
+  Windows des arguments qui n'en sont pas (utile avec `docker run`, `kubectl`, etc.).
+- **`scripts/toolchain.sh`** fixe un PATH de session déterministe (kubectl v1.34.x,
+  uv 0.12.x, kind 0.30.0, act) et vérifie ces versions avant de continuer — il échoue
+  bruyamment (`exit 1`) si l'une ne correspond pas, plutôt que de laisser une commande
+  tourner silencieusement avec la mauvaise version.
+
+Chaque commande de ce README (à partir d'ici) suppose que tu as sourcé ce script dans
+ton terminal Git Bash :
+
+```bash
+source scripts/toolchain.sh
 ```
 
 ### Étape 1 (Q1–Q2) : app en local, scénario et test d'intégration
@@ -252,22 +272,27 @@ RELAY_BASE_URL=http://127.0.0.1:8080 uv run pytest tests/integration -v   # 5 pa
 uv run python scripts/demo_flow.py --base-url http://127.0.0.1:8080      # dashboard : http://127.0.0.1:8080/
 ```
 
-Postgres n'a pas besoin de pull : kind récupère `postgres:16` lui-même sur
+Postgres n'a pas besoin de pull : kind récupère `postgres:16.11` lui-même sur
 Docker Hub.
 
 ### Étape 5 (Q6) : CI/CD avec act
 
-Le cluster kind de l'étape 4 doit exister, et le repo doit être un repo git avec
-au moins un commit. Au premier lancement, act demande quelle image utiliser :
+Le workflow vit à la racine du monorepo (`.github/workflows/hw3-ci.yml`), pas
+dans `03-deployment/` : lance `act` **depuis la racine du monorepo**, pas
+depuis ce dossier. Le cluster kind de l'étape 4 doit exister (le réseau Docker
+`kind` en dépend, voir plus bas), et le repo doit être un repo git avec au
+moins un commit. Au premier lancement, act demande quelle image utiliser :
 choisis **Medium**, ou passe-la directement :
 
 ```bash
-act push -P ubuntu-latest=catthehacker/ubuntu:act-latest
+act push -W .github/workflows/hw3-ci.yml --network kind -P ubuntu-latest=catthehacker/ubuntu:act-latest
 ```
 
-Résultat attendu : les jobs `Tests …` puis `Build image and deploy to kind` en
-**Job succeeded**, avec les lignes `Deployed image: agent-relay:<sha>-<date>` et
-`Deployed heading: …`.
+(voir `.actrc.example` à la racine pour en faire un `.actrc` réutilisable.)
+
+Résultat attendu : les jobs `Tests …` puis `Deploy to kind (persistant via
+act, éphémère sur runner GitHub)` en **Job succeeded**, avec les lignes
+`Deployed image: agent-relay:<sha>-<date>` et `Deployed heading: …`.
 
 Pour reproduire le passage v1 → v2 demandé par l'énoncé : ce repo contient déjà
 `Agent Relay v2`. Remets d'abord `Agent Relay` dans le `<h1>` de
@@ -298,19 +323,23 @@ docker compose down -v
 - **`address already in use` sur 8000** : un uvicorn, le conteneur `relay` ou
   Compose tourne encore. Arrête-le avant l'étape suivante.
 - **Les tests d'intégration sont `skipped`** : `RELAY_BASE_URL` n'est pas défini.
-- **macOS ou Windows avec act** : si le job deploy n'arrive pas à joindre le
-  cluster, voir la note sur `host.docker.internal` ci-dessous. Ce chemin n'a pas
-  été testé.
+- **Le job `deploy` échoue avec « Cannot resolve agent-relay-control-plane »
+  sous act** : act n'a pas été lancé avec `--network kind` (voir
+  `.actrc.example`), ou le cluster kind (et donc le réseau Docker `kind`)
+  n'existe pas encore — crée-le d'abord (étape 4).
 
 À savoir :
 
 - `act` monte le socket Docker dans le conteneur du job : c'est ce qui permet
   `docker build` et `kind load`. Le job exporte la kubeconfig de kind dans le
-  workspace (`.kubeconfig`, ignorée par git).
-- Sous Linux, le job atteint l'API kind sur `127.0.0.1`. Sous Docker Desktop
-  (macOS ou Windows), le workflow bascule automatiquement sur
-  `host.docker.internal` (avec `tls-server-name=localhost`). Je n'ai pas pu
-  tester ce chemin, voir « Limites ».
+  workspace (`03-deployment/.kubeconfig`, ignorée par git).
+- Le job détecte explicitement s'il tourne sous act (variable `$ACT`, définie
+  par act lui-même) : dans ce cas, le conteneur du job n'atteint le
+  control-plane kind qu'en étant sur le même réseau Docker (`--network kind`),
+  via son nom d'hôte interne (`kind export kubeconfig --internal`). Sans
+  `--network kind`, l'échec est immédiat et explicite (pas de repli silencieux
+  du style `host.docker.internal`). Sur un runner GitHub, `$ACT` n'est pas
+  défini et la kubeconfig standard (`127.0.0.1:<port>`) suffit.
 - `DOCKER_BUILD_FLAGS` (optionnel, vide par défaut) sert à passer des options de
   build, par exemple derrière un proxy d'entreprise.
 - `kubectl port-forward svc/...` s'attache à **un seul pod**. Après un rollout,
