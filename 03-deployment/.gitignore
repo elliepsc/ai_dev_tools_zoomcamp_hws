@@ -1,0 +1,14 @@
+.venv
+.ruff_cache/
+*.db
+*.db-shm
+*.db-wal
+__pycache__/
+.pytest_cache/
+*-credentials.json
+
+# local tooling
+.kubeconfig
+.secrets
+.actrc.local
+logs/

@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - postgres-secret.yaml
+  - postgres.yaml
+  - app.yaml
+
+# CI replaces newTag with a unique tag per build (see .github/workflows/ci.yml),
+# so one `kubectl apply -k` both updates config and triggers a single rollout.
+images:
+  - name: agent-relay
+    newTag: local

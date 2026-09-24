@@ -1,0 +1,164 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: false   # never cancel a deploy half-way
+
+env:
+  KIND_CLUSTER: agent-relay
+  NAMESPACE: agent-relay
+  IMAGE_NAME: agent-relay
+
+jobs:
+  test:
+    name: Tests (unit + integration on PostgreSQL)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: relay
+          POSTGRES_PASSWORD: relay
+          POSTGRES_DB: relay
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U relay -d relay"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+    env:
+      RELAY_DATABASE_URL: postgresql://relay:relay@localhost:5432/relay
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.18"   # pinned: reproducible, no GitHub API lookup
+          enable-cache: false
+
+      - name: Install dependencies (locked)
+        run: uv sync --locked
+
+      - name: Starter unit tests against PostgreSQL
+        # Fixture drops/recreates tables: only ever point it at a throwaway DB.
+        run: uv run pytest test_agent_relay.py -v
+
+      - name: Start the API against PostgreSQL
+        run: |
+          nohup uv run uvicorn main:app --host 127.0.0.1 --port 8000 > "$RUNNER_TEMP/api.log" 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS http://127.0.0.1:8000/ready && exit 0
+            sleep 1
+          done
+          echo "API did not become ready"; cat "$RUNNER_TEMP/api.log"; exit 1
+
+      - name: Integration tests (real HTTP API + real PostgreSQL)
+        env:
+          RELAY_BASE_URL: http://127.0.0.1:8000
+          RELAY_REQUIRE_SERVER: "1"          # unreachable server = failure, never a silent skip
+          RELAY_TEST_DATABASE_URL: postgresql://relay:relay@localhost:5432/relay
+          RELAY_EXPECT_DB: postgresql
+        run: uv run pytest tests/integration -v
+
+      - name: API logs
+        if: failure()
+        run: cat "$RUNNER_TEMP/api.log" || true
+
+  deploy:
+    name: Build image and deploy to kind
+    needs: test                # only runs if every test passed
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      KUBECONFIG: ${{ github.workspace }}/.kubeconfig
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute a unique image tag
+        run: |
+          sha=$(git rev-parse --short=7 HEAD 2>/dev/null || echo "${GITHUB_SHA::7}")
+          tag="${sha}-$(date -u +%Y%m%d%H%M%S)"
+          echo "IMAGE_TAG=$tag" >> "$GITHUB_ENV"
+          echo "Image: $IMAGE_NAME:$tag"
+
+      - name: Ensure kind and kubectl
+        run: |
+          if ! command -v kind >/dev/null; then
+            curl -fsSLo /usr/local/bin/kind https://github.com/kubernetes-sigs/kind/releases/download/v0.30.0/kind-linux-amd64
+            chmod +x /usr/local/bin/kind
+          fi
+          if ! command -v kubectl >/dev/null; then
+            curl -fsSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/v1.34.1/bin/linux/amd64/kubectl"
+            chmod +x /usr/local/bin/kubectl
+          fi
+          kind version
+
+      - name: Connect to the kind cluster
+        # Locally (act) the cluster already exists and is reused; on a
+        # GitHub-hosted runner an ephemeral one is created.
+        run: |
+          if ! kind get clusters | grep -qx "$KIND_CLUSTER"; then
+            kind create cluster --name "$KIND_CLUSTER" --config kind-config.yaml --wait 180s
+          fi
+          kind export kubeconfig --name "$KIND_CLUSTER" --kubeconfig "$KUBECONFIG"
+          if ! kubectl cluster-info --request-timeout=5s >/dev/null 2>&1; then
+            # Docker Desktop (macOS/Windows): the job container's 127.0.0.1 is
+            # not the machine running kind; reach the published API port via
+            # host.docker.internal and keep TLS verification (cert SAN: localhost).
+            server=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
+            kubectl config set-cluster "kind-$KIND_CLUSTER" \
+              --server="${server/127.0.0.1/host.docker.internal}" --tls-server-name=localhost
+          fi
+          kubectl cluster-info
+          echo "Currently deployed image:"
+          kubectl -n "$NAMESPACE" get deployment agent-relay \
+            -o jsonpath='{.spec.template.spec.containers[0].image}{"\n"}' 2>/dev/null || echo "(none yet)"
+
+      - name: Build image
+        run: |
+          docker build ${DOCKER_BUILD_FLAGS:-} \
+            --label org.opencontainers.image.revision="$GITHUB_SHA" \
+            -t "$IMAGE_NAME:$IMAGE_TAG" .
+
+      - name: Load image into kind
+        run: kind load docker-image "$IMAGE_NAME:$IMAGE_TAG" --name "$KIND_CLUSTER"
+
+      - name: Deploy and wait for the rollout
+        run: |
+          sed -i "s/^\(\s*newTag:\).*/\1 $IMAGE_TAG/" k8s/kustomization.yaml
+          kubectl apply -k k8s/
+          kubectl -n "$NAMESPACE" rollout status statefulset/postgres --timeout=180s
+          if ! kubectl -n "$NAMESPACE" rollout status deployment/agent-relay --timeout=180s; then
+            echo "::error::Rollout failed, rolling back to the previous ReplicaSet"
+            kubectl -n "$NAMESPACE" describe deployment agent-relay | tail -30
+            kubectl -n "$NAMESPACE" rollout undo deployment/agent-relay
+            kubectl -n "$NAMESPACE" rollout status deployment/agent-relay --timeout=180s
+            exit 1
+          fi
+          kubectl -n "$NAMESPACE" get pods -o wide
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.18"   # pinned: reproducible, no GitHub API lookup
+          enable-cache: false
+
+      - name: Post-deploy smoke test through port-forward
+        run: |
+          kubectl -n "$NAMESPACE" port-forward svc/agent-relay 18080:8000 > "$RUNNER_TEMP/pf.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18080/ready && break; sleep 1; done
+          expected=$(sed -n 's:.*<h1>\(.*\)</h1>.*:\1:p' dashboard.html)
+          deployed=$(curl -fsS http://127.0.0.1:18080/ | sed -n 's:.*<h1>\(.*\)</h1>.*:\1:p')
+          echo "Source heading:   $expected"
+          echo "Deployed heading: $deployed"
+          test "$deployed" = "$expected"
+          uv sync --locked
+          RELAY_BASE_URL=http://127.0.0.1:18080 RELAY_REQUIRE_SERVER=1 RELAY_EXPECT_HEADING="$expected" \
+            uv run pytest tests/integration -v
+          kubectl -n "$NAMESPACE" get deployment agent-relay \
+            -o jsonpath='Deployed image: {.spec.template.spec.containers[0].image}{"\n"}'

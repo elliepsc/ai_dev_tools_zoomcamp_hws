@@ -1,0 +1,49 @@
+# Agent Relay + PostgreSQL.
+#   docker compose up --build
+# Dashboard: http://127.0.0.1:8000/   (API talks to the DB at host "postgres",
+# the Compose service name, resolved by Compose's internal DNS.)
+
+name: agent-relay
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-relay}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-relay}
+      POSTGRES_DB: ${POSTGRES_DB:-relay}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    # Published only on loopback so the integration test can inspect the rows;
+    # the API itself does not need this port.
+    ports:
+      - "127.0.0.1:5432:5432"
+    restart: unless-stopped
+
+  app:
+    build: .
+    image: agent-relay:local
+    environment:
+      # "postgres" = the service name above, NOT localhost (localhost inside
+      # the app container is the app container itself).
+      RELAY_DATABASE_URL: postgresql://${POSTGRES_USER:-relay}:${POSTGRES_PASSWORD:-relay}@postgres:5432/${POSTGRES_DB:-relay}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=2).status == 200 else 1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
+volumes:
+  pgdata:

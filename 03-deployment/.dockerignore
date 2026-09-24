@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.pytest_cache
+*.db
+*.db-*
+*-credentials.json
+k8s
+tests
+test_agent_relay.py
+compose*.yaml
+docs
+scripts
+*.md

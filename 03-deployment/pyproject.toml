@@ -1,0 +1,31 @@
+[project]
+name = "agent-relay"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.141.1",
+    "psycopg[binary]>=3.3.5",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2.0.52",
+    "uvicorn[standard]>=0.52.4",
+]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+# The starter unit suite (in-process TestClient) plus the black-box
+# integration suite, which is skipped unless RELAY_BASE_URL is set.
+testpaths = ["test_agent_relay.py", "tests"]
+pythonpath = ["."]
+
+[tool.uv]
+# Resolution cutoff pinned in the project (the starter lock was produced with
+# a user-level "exclude-newer" setting). Keeps `uv sync --locked` reproducible
+# on any machine / CI runner, with the same package versions as the starter.
+exclude-newer = "2026-09-02T14:43:46.988566751Z"
