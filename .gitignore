@@ -1,0 +1,12 @@
+# Root-level ignores shared by every module of this monorepo. Each module also
+# keeps its own .gitignore for stack-specific artifacts (build output, venvs, etc).
+
+.claude/
+.kubeconfig
+.actrc
+logs/
+*.db
+*.db-shm
+*.db-wal
+.venv/
+__pycache__/
