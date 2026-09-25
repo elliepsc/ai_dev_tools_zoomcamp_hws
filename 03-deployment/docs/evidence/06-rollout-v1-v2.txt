@@ -1,0 +1,267 @@
+=== 2026-09-25T15:21:30Z (UTC) ===
+OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
+cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
+
+$ source scripts/toolchain.sh
+OK   kind: kind version 0.30.0
+OK   kubectl: Client Version: v1.34.1
+OK   uv: uv 0.12.18 (01cb90c1a 2026-09-22 x86_64-pc-windows-msvc)
+INFO act: act version 0.2.89
+OK   docker: Docker version 27.5.1, build 9f9e405
+OK   docker compose: Docker Compose version v2.32.4-desktop.1
+toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
+[RC=0]
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+$ grep -o '<h1>.*</h1>' dashboard.html
+<h1>Agent Relay</h1>
+[RC=0]
+$ kind get clusters
+agent-relay
+[RC=0]
+$ kubectl -n agent-relay get deployment agent-relay -o jsonpath='{.spec.template.spec.containers[0].image}'
+agent-relay:local[RC=0]
+$ docker build -t agent-relay:v1 .
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.72kB 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.11.15-slim
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 186B done
+#3 DONE 0.0s
+
+#4 [builder 1/5] FROM docker.io/library/python:3.11.15-slim
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 4.20kB done
+#5 DONE 0.0s
+
+#6 [runtime 3/5] WORKDIR /app
+#6 CACHED
+
+#7 [runtime 2/5] RUN groupadd --system --gid 10001 relay  && useradd --system --uid 10001 --gid relay --home-dir /app --no-create-home relay  && mkdir -p /data && chown relay:relay /data
+#7 CACHED
+
+#8 [builder 2/5] RUN pip install --no-cache-dir --root-user-action=ignore "uv==0.12.*"
+#8 CACHED
+
+#9 [builder 4/5] COPY pyproject.toml uv.lock .python-version ./
+#9 CACHED
+
+#10 [builder 3/5] WORKDIR /app
+#10 CACHED
+
+#11 [builder 5/5] RUN uv sync --locked --no-dev --no-install-project
+#11 CACHED
+
+#12 [runtime 4/5] COPY --from=builder /app/.venv /app/.venv
+#12 CACHED
+
+#13 [runtime 5/5] COPY --chown=relay:relay main.py database.py storage.py schemas.py errors.py dashboard.py worker.py dashboard.html ./
+#13 DONE 0.1s
+
+#14 exporting to image
+#14 exporting layers 0.0s done
+#14 writing image sha256:324efaf2c5e3602a9dc45050035cc760e0b9bcd649da72c1dc4dcc4107e36ec9 done
+#14 naming to docker.io/library/agent-relay:v1 done
+#14 DONE 0.1s
+[RC=0]
+$ grep -o '<h1>.*</h1>' dashboard.html
+<h1>Agent Relay v2</h1>
+[RC=0]
+$ docker build -t agent-relay:v2 .
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.72kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for docker.io/library/python:3.11.15-slim
+#2 DONE 0.0s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 186B done
+#3 DONE 0.0s
+
+#4 [builder 1/5] FROM docker.io/library/python:3.11.15-slim
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 4.20kB done
+#5 DONE 0.0s
+
+#6 [builder 5/5] RUN uv sync --locked --no-dev --no-install-project
+#6 CACHED
+
+#7 [runtime 2/5] RUN groupadd --system --gid 10001 relay  && useradd --system --uid 10001 --gid relay --home-dir /app --no-create-home relay  && mkdir -p /data && chown relay:relay /data
+#7 CACHED
+
+#8 [builder 2/5] RUN pip install --no-cache-dir --root-user-action=ignore "uv==0.12.*"
+#8 CACHED
+
+#9 [runtime 3/5] WORKDIR /app
+#9 CACHED
+
+#10 [builder 3/5] WORKDIR /app
+#10 CACHED
+
+#11 [runtime 4/5] COPY --from=builder /app/.venv /app/.venv
+#11 CACHED
+
+#12 [builder 4/5] COPY pyproject.toml uv.lock .python-version ./
+#12 CACHED
+
+#13 [runtime 5/5] COPY --chown=relay:relay main.py database.py storage.py schemas.py errors.py dashboard.py worker.py dashboard.html ./
+#13 CACHED
+
+#14 exporting to image
+#14 exporting layers done
+#14 writing image sha256:fccabb6a20d97a97ed92ad50c65fd2dc4a257c82878bc2213bf6ca5c1be15ae8 done
+#14 naming to docker.io/library/agent-relay:v2 done
+#14 DONE 0.0s
+[RC=0]
+$ kind load docker-image agent-relay:v1 --name agent-relay
+Image: "agent-relay:v1" with ID "sha256:324efaf2c5e3602a9dc45050035cc760e0b9bcd649da72c1dc4dcc4107e36ec9" not yet present on node "agent-relay-control-plane", loading...
+[RC=0]
+$ kind load docker-image agent-relay:v2 --name agent-relay
+Image: "agent-relay:v2" with ID "sha256:fccabb6a20d97a97ed92ad50c65fd2dc4a257c82878bc2213bf6ca5c1be15ae8" not yet present on node "agent-relay-control-plane", loading...
+[RC=0]
+$ kubectl -n agent-relay set image deployment/agent-relay app=agent-relay:v1
+deployment.apps/agent-relay image updated
+[RC=0]
+$ kubectl -n agent-relay rollout status deployment/agent-relay --timeout=180s
+Waiting for deployment "agent-relay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "agent-relay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "agent-relay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "agent-relay" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "agent-relay" rollout to finish: 1 old replicas are pending termination...
+deployment "agent-relay" successfully rolled out
+[RC=0]
+$ kubectl -n agent-relay get rs -l app.kubernetes.io/name=agent-relay
+NAME                     DESIRED   CURRENT   READY   AGE
+agent-relay-6c76694c5b   0         0         0       15m
+agent-relay-6ff7f46dbd   2         2         2       7s
+[RC=0]
+ASSERT PASS: deployed image is agent-relay:v1
+[RC=0]
+port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ready && echo && break; sleep 1; done
+{"status":"ready"}
+[RC=0]
+# served heading: <h1>Agent Relay</h1>
+ASSERT PASS: served heading is <h1>Agent Relay</h1> (v1)
+[RC=0]
+$ kubectl -n agent-relay set image deployment/agent-relay app=agent-relay:v2
+deployment.apps/agent-relay image updated
+[RC=0]
+$ kubectl -n agent-relay rollout status deployment/agent-relay --timeout=180s
+Waiting for deployment "agent-relay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "agent-relay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "agent-relay" rollout to finish: 1 out of 2 new replicas have been updated...
+Waiting for deployment "agent-relay" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "agent-relay" rollout to finish: 1 old replicas are pending termination...
+deployment "agent-relay" successfully rolled out
+[RC=0]
+$ kubectl -n agent-relay get rs -l app.kubernetes.io/name=agent-relay
+NAME                     DESIRED   CURRENT   READY   AGE
+agent-relay-696cc69c     2         2         2       7s
+agent-relay-6c76694c5b   0         0         0       16m
+agent-relay-6ff7f46dbd   0         0         0       35s
+[RC=0]
+ASSERT PASS: deployed image is agent-relay:v2
+[RC=0]
+ASSERT FAIL: exactly 2 ReplicaSets total, and only 1 has desired>0 pods
+[RC=1]
+# CORRECTION: the assertion above ("exactly 2 ReplicaSets total, only 1 with
+# pods") was itself wrong, not the cluster's behavior. This Deployment has
+# revisionHistoryLimit: 5 (k8s/app.yaml), and this session's actual image
+# sequence was agent-relay:local (phase 04-kind) -> v1 -> v2, three distinct
+# images -> three ReplicaSets in history is the CORRECT expected count, not
+# a bug. A looser 'at least 2' assertion would just have hidden this wrong
+# spec instead of fixing it. Replaced below with identity-based checks that
+# are at least as strict as the original intent (which image is actually
+# live vs merely retained in history), not a relaxed count.
+$ kubectl -n agent-relay get rs -l app.kubernetes.io/name=agent-relay -o jsonpath='{range .items[?(@.spec.replicas>0)]}{.spec.template.spec.containers[0].image}{"\n"}{end}'
+agent-relay:v2
+[RC=0]
+ASSERT PASS: exactly one line of output, equal to agent-relay:v2 (only ReplicaSet with replicas>0 runs v2)
+[RC=0]
+$ kubectl -n agent-relay get rs -l app.kubernetes.io/name=agent-relay -o jsonpath='{range .items[*]}{.metadata.name}{"  image="}{.spec.template.spec.containers[0].image}{"  replicas="}{.spec.replicas}{"\n"}{end}'
+agent-relay-696cc69c  image=agent-relay:v2  replicas=2
+agent-relay-6c76694c5b  image=agent-relay:local  replicas=0
+agent-relay-6ff7f46dbd  image=agent-relay:v1  replicas=0
+[RC=0]
+ASSERT PASS: a ReplicaSet with image agent-relay:v1 exists, at 0 replicas
+[RC=0]
+$ kubectl -n agent-relay rollout history deployment/agent-relay
+deployment.apps/agent-relay 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         <none>
+3         <none>
+
+[RC=0]
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ready && echo && break; sleep 1; done
+{"status":"ready"}
+[RC=0]
+# served heading: <h1>Agent Relay v2</h1>
+ASSERT PASS: served heading is <h1>Agent Relay v2</h1>
+[RC=0]
+$ kubectl -n agent-relay rollout history deployment/agent-relay --revision=3
+deployment.apps/agent-relay with revision #3
+Pod Template:
+  Labels:	app.kubernetes.io/name=agent-relay
+	app.kubernetes.io/part-of=agent-relay
+	pod-template-hash=696cc69c
+  Containers:
+   app:
+    Image:	agent-relay:v2
+    Port:	8000/TCP (http)
+    Host Port:	0/TCP (http)
+    Limits:
+      memory:	256Mi
+    Requests:
+      cpu:	50m
+      memory:	96Mi
+    Liveness:	http-get http://:http/health delay=0s timeout=3s period=10s #success=1 #failure=3
+    Readiness:	http-get http://:http/ready delay=0s timeout=3s period=5s #success=1 #failure=3
+    Startup:	http-get http://:http/health delay=0s timeout=1s period=2s #success=1 #failure=60
+    Environment Variables from:
+      agent-relay-config	ConfigMap	Optional: false
+    Environment:
+      RELAY_DATABASE_URL:	<set to the key 'RELAY_DATABASE_URL' in secret 'postgres-credentials'>	Optional: false
+    Mounts:
+      /tmp from tmp (rw)
+  Volumes:
+   tmp:
+    Type:	EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:	
+    SizeLimit:	<unset>
+  Node-Selectors:	<none>
+  Tolerations:	<none>
+
+[RC=0]
+ASSERT PASS: revision 3 (latest) image is agent-relay:v2
+[RC=0]
+# TRACEABILITY: the agent-relay:v2 image built above was built from a
+# dashboard.html edit that was NOT YET committed at build time (this is
+# normal for local iteration, but worth recording explicitly). It has now
+# been committed: `git rev-parse --short HEAD` -> 0b39d14 (chore(hw3):
+# dashboard heading -> Agent Relay v2). The image content and the
+# repository content are the same dashboard.html; only the commit
+# timestamp comes after the build.
+# port-forward stopped (pid=1614).
