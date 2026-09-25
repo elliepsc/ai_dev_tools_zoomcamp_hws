@@ -323,6 +323,9 @@ docker compose down -v
 
 - **`address already in use` sur 8000** : un uvicorn, le conteneur `relay` ou
   Compose tourne encore. Arrête-le avant l'étape suivante.
+- **Port 8000 ou 5432 déjà pris par autre chose (un autre projet Docker par
+  exemple)** : `AGENT_RELAY_APP_PORT=18000 AGENT_RELAY_PG_PORT=15432 docker compose up --build -d`
+  (défaut inchangé si tu ne les positionnes pas : 8000 / 5432).
 - **Les tests d'intégration sont `skipped`** : `RELAY_BASE_URL` n'est pas défini.
 - **Le job `deploy` échoue avec « Cannot resolve agent-relay-control-plane »
   sous act** : act n'a pas été lancé avec `--network kind` (voir

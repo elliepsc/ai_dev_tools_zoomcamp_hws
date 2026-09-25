@@ -1,0 +1,396 @@
+=== 2026-09-25T13:53:59Z (UTC) ===
+OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
+cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
+
+$ source scripts/toolchain.sh
+OK   kind: kind version 0.30.0
+OK   kubectl: Client Version: v1.34.1
+OK   uv: uv 0.12.18 (01cb90c1a 2026-09-22 x86_64-pc-windows-msvc)
+INFO act: act version 0.2.89
+OK   docker: Docker version 27.5.1, build 9f9e405
+OK   docker compose: Docker Compose version v2.32.4-desktop.1
+toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
+[RC=0]
+$ docker compose up --build -d
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [app internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.72kB 0.0s done
+#1 DONE 0.0s
+
+#2 [app internal] load metadata for docker.io/library/python:3.11.15-slim
+#2 DONE 0.0s
+
+#3 [app internal] load .dockerignore
+#3 transferring context: 186B done
+#3 DONE 0.0s
+
+#4 [app builder 1/5] FROM docker.io/library/python:3.11.15-slim
+#4 DONE 0.0s
+
+#5 [app internal] load build context
+#5 transferring context: 340B done
+#5 DONE 0.0s
+
+#6 [app builder 2/5] RUN pip install --no-cache-dir --root-user-action=ignore "uv==0.12.*"
+#6 CACHED
+
+#7 [app runtime 3/5] WORKDIR /app
+#7 CACHED
+
+#8 [app builder 5/5] RUN uv sync --locked --no-dev --no-install-project
+#8 CACHED
+
+#9 [app runtime 4/5] COPY --from=builder /app/.venv /app/.venv
+#9 CACHED
+
+#10 [app builder 3/5] WORKDIR /app
+#10 CACHED
+
+#11 [app builder 4/5] COPY pyproject.toml uv.lock .python-version ./
+#11 CACHED
+
+#12 [app runtime 2/5] RUN groupadd --system --gid 10001 relay  && useradd --system --uid 10001 --gid relay --home-dir /app --no-create-home relay  && mkdir -p /data && chown relay:relay /data
+#12 CACHED
+
+#13 [app runtime 5/5] COPY --chown=relay:relay main.py database.py storage.py schemas.py errors.py dashboard.py worker.py dashboard.html ./
+#13 CACHED
+
+#14 [app] exporting to image
+#14 exporting layers done
+#14 writing image sha256:01f78e01a05a3cce9f306b5c268688a668faa2d5650449786fb63b66aa16c3ab done
+#14 naming to docker.io/library/agent-relay:local done
+#14 DONE 0.0s
+
+#15 [app] resolving provenance for metadata file
+#15 DONE 0.0s
+ app  Built
+ Network agent-relay_default  Creating
+ Network agent-relay_default  Created
+ Volume "agent-relay_pgdata"  Creating
+ Volume "agent-relay_pgdata"  Created
+ Container agent-relay-postgres-1  Creating
+ Container agent-relay-postgres-1  Created
+ Container agent-relay-app-1  Creating
+ Container agent-relay-app-1  Created
+ Container agent-relay-postgres-1  Starting
+Error response from daemon: driver failed programming external connectivity on endpoint agent-relay-postgres-1 (a54d520a6152f84363f02452544cf107fbf79a5d619e3689cc6d9aa1b0980465): failed to bind port 127.0.0.1:5432/tcp: listen tcp4 127.0.0.1:5432: bind: address already in use
+[RC=1]
+# diagnosis: port 5432 was held by an unrelated pre-existing container on this machine (workshop-postgres-1, another project), not by anything from this repo. Fix: compose.yaml host ports made overridable (AGENT_RELAY_PG_PORT / AGENT_RELAY_APP_PORT, default unchanged) so this run doesn't touch that unrelated container. Cleaning up the partial attempt above first.
+$ docker compose down -v
+ Container agent-relay-app-1  Stopping
+ Container agent-relay-app-1  Stopped
+ Container agent-relay-app-1  Removing
+ Container agent-relay-app-1  Removed
+ Container agent-relay-postgres-1  Stopping
+ Container agent-relay-postgres-1  Stopped
+ Container agent-relay-postgres-1  Removing
+ Container agent-relay-postgres-1  Removed
+ Volume agent-relay_pgdata  Removing
+ Network agent-relay_default  Removing
+ Volume agent-relay_pgdata  Removed
+ Network agent-relay_default  Removed
+[RC=0]
+# retry with AGENT_RELAY_PG_PORT=15432 AGENT_RELAY_APP_PORT=18000
+$ docker compose up --build -d
+#0 building with "desktop-linux" instance using docker driver
+
+#1 [app internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.72kB done
+#1 DONE 0.0s
+
+#2 [app internal] load metadata for docker.io/library/python:3.11.15-slim
+#2 DONE 0.0s
+
+#3 [app internal] load .dockerignore
+#3 transferring context: 186B done
+#3 DONE 0.0s
+
+#4 [app builder 1/5] FROM docker.io/library/python:3.11.15-slim
+#4 DONE 0.0s
+
+#5 [app] resolving provenance for metadata file
+#5 DONE 0.0s
+
+#6 [app internal] load build context
+#6 transferring context: 340B done
+#6 DONE 0.0s
+
+#7 [app runtime 3/5] WORKDIR /app
+#7 CACHED
+
+#8 [app builder 5/5] RUN uv sync --locked --no-dev --no-install-project
+#8 CACHED
+
+#9 [app runtime 2/5] RUN groupadd --system --gid 10001 relay  && useradd --system --uid 10001 --gid relay --home-dir /app --no-create-home relay  && mkdir -p /data && chown relay:relay /data
+#9 CACHED
+
+#10 [app runtime 4/5] COPY --from=builder /app/.venv /app/.venv
+#10 CACHED
+
+#11 [app builder 4/5] COPY pyproject.toml uv.lock .python-version ./
+#11 CACHED
+
+#12 [app builder 2/5] RUN pip install --no-cache-dir --root-user-action=ignore "uv==0.12.*"
+#12 CACHED
+
+#13 [app builder 3/5] WORKDIR /app
+#13 CACHED
+
+#14 [app runtime 5/5] COPY --chown=relay:relay main.py database.py storage.py schemas.py errors.py dashboard.py worker.py dashboard.html ./
+#14 CACHED
+
+#15 [app] exporting to image
+#15 exporting layers done
+#15 writing image sha256:01f78e01a05a3cce9f306b5c268688a668faa2d5650449786fb63b66aa16c3ab done
+#15 naming to docker.io/library/agent-relay:local done
+#15 DONE 0.0s
+ app  Built
+ Network agent-relay_default  Creating
+ Network agent-relay_default  Created
+ Volume "agent-relay_pgdata"  Creating
+ Volume "agent-relay_pgdata"  Created
+ Container agent-relay-postgres-1  Creating
+ Container agent-relay-postgres-1  Created
+ Container agent-relay-app-1  Creating
+ Container agent-relay-app-1  Created
+ Container agent-relay-postgres-1  Starting
+ Container agent-relay-postgres-1  Started
+ Container agent-relay-postgres-1  Waiting
+ Container agent-relay-postgres-1  Healthy
+ Container agent-relay-app-1  Starting
+ Container agent-relay-app-1  Started
+[RC=0]
+$ docker compose ps
+NAME                     IMAGE               COMMAND                  SERVICE    CREATED          STATUS                    PORTS
+agent-relay-app-1        agent-relay:local   "uvicorn main:app --…"   app        21 seconds ago   Up 14 seconds (healthy)   0.0.0.0:18000->8000/tcp
+agent-relay-postgres-1   postgres:16.11      "docker-entrypoint.s…"   postgres   21 seconds ago   Up 17 seconds (healthy)   127.0.0.1:15432->5432/tcp
+[RC=0]
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18000/ready && echo && break; sleep 1; done
+{"status":"ready"}
+[RC=0]
+$ RELAY_BASE_URL=http://127.0.0.1:18000 RELAY_REQUIRE_SERVER=1 RELAY_TEST_DATABASE_URL=postgresql://relay:relay@127.0.0.1:15432/relay RELAY_EXPECT_DB=postgresql uv run pytest tests/integration -v
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Ellie Pro\Documents\Projets Data\projets_github\ai_dev_tools_zoomcamp_hws\03-deployment\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Ellie Pro\Documents\Projets Data\projets_github\ai_dev_tools_zoomcamp_hws\03-deployment
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collecting ... collected 5 items
+
+tests/integration/test_task_flow.py::test_health_ready_and_dashboard PASSED [ 20%]
+tests/integration/test_task_flow.py::test_two_agents_exchange_task_and_result PASSED [ 40%]
+tests/integration/test_task_flow.py::test_unauthenticated_calls_are_rejected PASSED [ 60%]
+tests/integration/test_task_flow.py::test_empty_inbox_returns_204 PASSED [ 80%]
+tests/integration/test_task_flow.py::test_shipped_worker_process_completes_task PASSED [100%]
+
+============================== 5 passed in 4.53s ==============================
+[RC=0]
+$ docker compose exec -T postgres psql -U relay -d relay -c "select status, count(*) from tasks group by 1"
+  status   | count 
+-----------+-------
+ completed |     2
+(1 row)
+
+[RC=0]
+$ docker compose restart
+ Container agent-relay-postgres-1  Restarting
+ Container agent-relay-app-1  Restarting
+ Container agent-relay-postgres-1  Started
+ Container agent-relay-app-1  Started
+[RC=0]
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18000/ready && echo && break; sleep 1; done
+curl: (52) Empty reply from server
+{"status":"ready"}
+[RC=0]
+$ docker compose exec -T postgres psql -U relay -d relay -c "select status, count(*) from tasks group by 1"
+  status   | count 
+-----------+-------
+ completed |     2
+(1 row)
+
+[RC=0]
+# row counts identical before/after restart (2 completed, both times) -> data survived the restart, confirming the pgdata volume.
+$ docker compose down -v
+ Container agent-relay-app-1  Stopping
+ Container agent-relay-app-1  Stopped
+ Container agent-relay-app-1  Removing
+ Container agent-relay-app-1  Removed
+ Container agent-relay-postgres-1  Stopping
+ Container agent-relay-postgres-1  Stopped
+ Container agent-relay-postgres-1  Removing
+ Container agent-relay-postgres-1  Removed
+ Volume agent-relay_pgdata  Removing
+ Network agent-relay_default  Removing
+ Volume agent-relay_pgdata  Removed
+ Network agent-relay_default  Removed
+[RC=0]
+# CORRECTION: the note directly above ("... confirming the pgdata volume") is
+# WRONG and is kept only for the record, struck through here in words since
+# this file is append-only: `docker compose restart` (used above) reuses the
+# same containers and the same container filesystem, so it never exercises
+# the volume and cannot prove persistence by itself. This was caught after
+# the `docker compose down -v` right above it had already destroyed that
+# stack's data, which is why the very next real command below fails with
+# "service postgres is not running" -- that failure is genuine, not staged.
+# A real persistence proof follows further down: containers actually removed
+# (`docker compose down`, no -v) and recreated, with the volume the only
+# thing carried over.
+$ docker compose exec -T postgres psql -U relay -d relay -c 'select id, status from tasks order by id'
+service "postgres" is not running
+[RC=1]
+# restarting the stack for the corrected persistence proof (previous run was fully torn down with -v)
+$ docker compose up -d
+ Network agent-relay_default  Creating
+ Network agent-relay_default  Created
+ Volume "agent-relay_pgdata"  Creating
+ Volume "agent-relay_pgdata"  Created
+ Container agent-relay-postgres-1  Creating
+ Container agent-relay-postgres-1  Created
+ Container agent-relay-app-1  Creating
+ Container agent-relay-app-1  Created
+ Container agent-relay-postgres-1  Starting
+ Container agent-relay-postgres-1  Started
+ Container agent-relay-postgres-1  Waiting
+ Container agent-relay-postgres-1  Healthy
+ Container agent-relay-app-1  Starting
+ Container agent-relay-app-1  Started
+[RC=0]
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18000/ready && echo && break; sleep 1; done
+curl: (52) Empty reply from server
+curl: (52) Empty reply from server
+{"status":"ready"}
+[RC=0]
+$ RELAY_BASE_URL=http://127.0.0.1:18000 RELAY_REQUIRE_SERVER=1 RELAY_TEST_DATABASE_URL=postgresql://relay:relay@127.0.0.1:15432/relay RELAY_EXPECT_DB=postgresql uv run pytest tests/integration -v
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Ellie Pro\Documents\Projets Data\projets_github\ai_dev_tools_zoomcamp_hws\03-deployment\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Ellie Pro\Documents\Projets Data\projets_github\ai_dev_tools_zoomcamp_hws\03-deployment
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collecting ... collected 5 items
+
+tests/integration/test_task_flow.py::test_health_ready_and_dashboard PASSED [ 20%]
+tests/integration/test_task_flow.py::test_two_agents_exchange_task_and_result PASSED [ 40%]
+tests/integration/test_task_flow.py::test_unauthenticated_calls_are_rejected PASSED [ 60%]
+tests/integration/test_task_flow.py::test_empty_inbox_returns_204 PASSED [ 80%]
+tests/integration/test_task_flow.py::test_shipped_worker_process_completes_task PASSED [100%]
+
+============================== 5 passed in 4.09s ==============================
+[RC=0]
+$ docker compose exec -T postgres psql -U relay -d relay -c 'select id, status from tasks order by id'
+                  id                   |  status   
+---------------------------------------+-----------
+ task_da62f43c29b8402b8dc67fa72130e4ec | completed
+ task_ed54ae67e591461a8e0d2ae5c59a5fb8 | completed
+(2 rows)
+
+[RC=0]
+$ docker compose down
+ Container agent-relay-app-1  Stopping
+ Container agent-relay-app-1  Stopped
+ Container agent-relay-app-1  Removing
+ Container agent-relay-app-1  Removed
+ Container agent-relay-postgres-1  Stopping
+ Container agent-relay-postgres-1  Stopped
+ Container agent-relay-postgres-1  Removing
+ Container agent-relay-postgres-1  Removed
+ Network agent-relay_default  Removing
+ Network agent-relay_default  Removed
+[RC=0]
+$ docker volume ls | grep agent-relay_pgdata
+local     agent-relay_pgdata
+[RC=0]
+$ docker compose up -d
+ Network agent-relay_default  Creating
+ Network agent-relay_default  Created
+ Container agent-relay-postgres-1  Creating
+ Container agent-relay-postgres-1  Created
+ Container agent-relay-app-1  Creating
+ Container agent-relay-app-1  Created
+ Container agent-relay-postgres-1  Starting
+ Container agent-relay-postgres-1  Started
+ Container agent-relay-postgres-1  Waiting
+ Container agent-relay-postgres-1  Healthy
+ Container agent-relay-app-1  Starting
+ Container agent-relay-app-1  Started
+[RC=0]
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18000/ready && echo && break; sleep 1; done
+curl: (52) Empty reply from server
+{"status":"ready"}
+[RC=0]
+$ docker compose exec -T postgres psql -U relay -d relay -c 'select id, status from tasks order by id'
+                  id                   |  status   
+---------------------------------------+-----------
+ task_da62f43c29b8402b8dc67fa72130e4ec | completed
+ task_ed54ae67e591461a8e0d2ae5c59a5fb8 | completed
+(2 rows)
+
+[RC=0]
+# containers were fully removed and recreated (docker compose down, no -v) between the two queries above; the volume (docker volume ls, still present after down) is the only thing that could have carried the rows over. Same ids both times -> real persistence proof.
+# final cleanup for this evidence step
+$ docker compose down -v
+ Container agent-relay-app-1  Stopping
+ Container agent-relay-app-1  Stopped
+ Container agent-relay-app-1  Removing
+ Container agent-relay-app-1  Removed
+ Container agent-relay-postgres-1  Stopping
+ Container agent-relay-postgres-1  Stopped
+ Container agent-relay-postgres-1  Removing
+ Container agent-relay-postgres-1  Removed
+ Volume agent-relay_pgdata  Removing
+ Network agent-relay_default  Removing
+ Volume agent-relay_pgdata  Removed
+ Network agent-relay_default  Removed
+[RC=0]
+# counter-test: after the final -v teardown below, recreate the stack and confirm the table is EMPTY -- this is what discriminates the persistence proof above from a false positive (e.g. app-side seeding, or postgres image init data).
+$ docker compose up -d
+ Network agent-relay_default  Creating
+ Network agent-relay_default  Created
+ Volume "agent-relay_pgdata"  Creating
+ Volume "agent-relay_pgdata"  Created
+ Container agent-relay-postgres-1  Creating
+ Container agent-relay-postgres-1  Created
+ Container agent-relay-app-1  Creating
+ Container agent-relay-app-1  Created
+ Container agent-relay-postgres-1  Starting
+ Container agent-relay-postgres-1  Started
+ Container agent-relay-postgres-1  Waiting
+ Container agent-relay-postgres-1  Healthy
+ Container agent-relay-app-1  Starting
+ Container agent-relay-app-1  Started
+[RC=0]
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18000/ready && echo && break; sleep 1; done
+curl: (52) Empty reply from server
+{"status":"ready"}
+[RC=0]
+$ docker compose exec -T postgres psql -U relay -d relay -c 'select id, status from tasks order by id'
+ id | status 
+----+--------
+(0 rows)
+
+[RC=0]
+# 0 rows, as expected: without the volume, the data is gone -> this is what makes the earlier down(no -v)+up test a real persistence proof, not a coincidence.
+$ docker compose down -v
+ Container agent-relay-app-1  Stopping
+ Container agent-relay-app-1  Stopped
+ Container agent-relay-app-1  Removing
+ Container agent-relay-app-1  Removed
+ Container agent-relay-postgres-1  Stopping
+ Container agent-relay-postgres-1  Stopped
+ Container agent-relay-postgres-1  Removing
+ Container agent-relay-postgres-1  Removed
+ Volume agent-relay_pgdata  Removing
+ Network agent-relay_default  Removing
+ Volume agent-relay_pgdata  Removed
+ Network agent-relay_default  Removed
+[RC=0]
+# NOTE: les lignes 213-227 (`docker compose down -v` + sortie) ont été
+# restaurées depuis le transcript de la session le 2026-09-25, pas
+# recapturées par réexécution -- la commande avait réellement tourné à ce
+# moment-là ; seule la note d'interprétation qui la précédait (ligne 213)
+# était fausse.
+# CORRECTION: la note "0 rows, as expected" (ligne 373) a été écrite par
+# le script AVANT l'exécution de la requête, comme commentaire prévu à
+# l'avance plutôt que comme verdict calculé. Vérifiée a posteriori : la
+# sortie ligne 370 montre bien (0 rows).
