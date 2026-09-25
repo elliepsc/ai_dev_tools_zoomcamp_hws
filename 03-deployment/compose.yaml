@@ -20,9 +20,11 @@ services:
       timeout: 3s
       retries: 30
     # Published only on loopback so the integration test can inspect the rows;
-    # the API itself does not need this port.
+    # the API itself does not need this port. Host port overridable
+    # (AGENT_RELAY_PG_PORT) in case something else on the machine already
+    # holds 5432 -- default unchanged.
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:${AGENT_RELAY_PG_PORT:-5432}:5432"
     restart: unless-stopped
 
   app:
@@ -35,8 +37,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Host port overridable (AGENT_RELAY_APP_PORT) in case something else on
+    # the machine already holds 8000 -- default unchanged.
     ports:
-      - "8000:8000"
+      - "${AGENT_RELAY_APP_PORT:-8000}:8000"
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=2).status == 200 else 1)"]
       interval: 5s
