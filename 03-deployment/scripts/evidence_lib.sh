@@ -17,6 +17,26 @@
 # redirects to a temp file, then tees that file's content -- deterministic
 # ordering, no subshell on $cmd). toolchain.sh is sourced directly by
 # record_header(), never through record().
+#
+# Second bug history: each Bash tool invocation is its own fresh shell
+# process, so neither PATH exports (source toolchain.sh) nor plain shell
+# variables survive from one tool call to the next -- an evidence script that
+# spans multiple tool calls must re-source toolchain.sh at the top of every
+# call, and must never hand-retype a value captured by an earlier call (that
+# happened once, for a task-id comparison in 04-kind.txt -- bounded risk
+# since a typo would fail the assertion, not pass it, but still wrong).
+# Fix: cross-call state goes through state_set/state_get below, backed by
+# docs/evidence/.state/ (gitignored), never retyped by hand.
+state_set() {
+  local key="$1" value="$2"
+  mkdir -p docs/evidence/.state
+  printf '%s' "$value" > "docs/evidence/.state/$key"
+}
+
+state_get() {
+  local key="$1"
+  cat "docs/evidence/.state/$key" 2>/dev/null
+}
 
 set -o pipefail
 
@@ -64,6 +84,22 @@ record() {
   return "$rc"
 }
 
+# `record_stream <file> "<cmd>"`: for LONG-running commands (image pulls,
+# `kind create cluster`, rollouts) whose live progress is worth seeing while
+# it runs. Streams output directly (via tee, no buffering temp file) and
+# captures the real RC via PIPESTATUS -- unlike record(), the command DOES
+# run on the left side of a pipe, so any exports/PATH changes it makes are
+# lost outside this call. Never use it for `source scripts/toolchain.sh`;
+# use record_header for that (see the file's own history of that exact bug).
+record_stream() {
+  local file="$1" cmd="$2"
+  echo "\$ $cmd" | tee -a "$file"
+  eval "$cmd" 2>&1 | tee -a "$file"
+  local rc=${PIPESTATUS[0]}
+  echo "[RC=$rc]" | tee -a "$file"
+  return "$rc"
+}
+
 record_note() {
   local file="$1" note="$2"
   echo "# $note" | tee -a "$file"
@@ -86,7 +122,9 @@ assert_check() {
   fi
 }
 
-# Prints a free port to stdout, logging the check to $2. Tries $1, $1+1, ...
+# Prints ONLY the free port number to stdout (so `p=$(port_free_or_pick ...)`
+# captures a clean value) -- the log line goes to the FILE only, never to
+# stdout, precisely to avoid contaminating that capture. Tries $1, $1+1, ...
 port_free_or_pick() {
   local base="$1" file="$2" p
   for offset in $(seq 0 20); do
@@ -94,7 +132,7 @@ port_free_or_pick() {
     if netstat -ano | grep -q ":$p "; then
       echo "port $p busy, trying next" >> "$file"
     else
-      echo "port check: $p is free (netstat -ano | grep \":$p \" -> no match)" | tee -a "$file"
+      echo "port check: $p is free (netstat -ano | grep \":$p \" -> no match)" >> "$file"
       echo "$p"
       return 0
     fi
