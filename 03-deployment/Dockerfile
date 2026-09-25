@@ -2,7 +2,7 @@
 # the runtime image only gets the virtualenv + application code, runs as a
 # non-root user and listens on 0.0.0.0 so `-p` / Services can reach it.
 
-ARG PYTHON_IMAGE=python:3.11-slim
+ARG PYTHON_IMAGE=python:3.11.15-slim
 
 FROM ${PYTHON_IMAGE} AS builder
 ENV UV_COMPILE_BYTECODE=1 \

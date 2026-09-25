@@ -1,0 +1,8 @@
+# Everything is consumed by Linux (Docker, Kubernetes, GitHub Actions) even
+# though this repo is mostly worked on from Windows: normalize to LF.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary

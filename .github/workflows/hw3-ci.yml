@@ -1,14 +1,20 @@
-name: CI/CD
+name: HW3 CI/CD (Agent Relay)
 
 on:
   push:
     branches: [main]
+    paths: ['03-deployment/**', '.github/workflows/hw3-ci.yml']
   pull_request:
+    paths: ['03-deployment/**', '.github/workflows/hw3-ci.yml']
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: hw3-ci-${{ github.ref }}
   cancel-in-progress: false   # never cancel a deploy half-way
+
+defaults:
+  run:
+    working-directory: 03-deployment
 
 env:
   KIND_CLUSTER: agent-relay
@@ -22,7 +28,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:16
+        image: postgres:16.11
         env:
           POSTGRES_USER: relay
           POSTGRES_PASSWORD: relay
@@ -70,13 +76,13 @@ jobs:
         run: cat "$RUNNER_TEMP/api.log" || true
 
   deploy:
-    name: Build image and deploy to kind
+    name: "Deploy to kind (persistant via act, éphémère sur runner GitHub)"
     needs: test                # only runs if every test passed
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
-      KUBECONFIG: ${{ github.workspace }}/.kubeconfig
+      KUBECONFIG: ${{ github.workspace }}/03-deployment/.kubeconfig
     steps:
       - uses: actions/checkout@v4
 
@@ -102,18 +108,29 @@ jobs:
       - name: Connect to the kind cluster
         # Locally (act) the cluster already exists and is reused; on a
         # GitHub-hosted runner an ephemeral one is created.
+        #
+        # act runs this job inside a Docker container. That container only
+        # reaches the kind control-plane container directly (by its Docker
+        # network hostname) if act itself was launched with `--network kind`
+        # (see .actrc.example at the repo root); GitHub-hosted runners execute
+        # steps on the VM directly, so 127.0.0.1:<published-port> always works
+        # there. Detection is explicit (act sets $ACT) with no silent fallback:
+        # if $ACT is set but the network hostname doesn't resolve, this fails
+        # loudly instead of guessing at a workaround.
         run: |
           if ! kind get clusters | grep -qx "$KIND_CLUSTER"; then
             kind create cluster --name "$KIND_CLUSTER" --config kind-config.yaml --wait 180s
           fi
-          kind export kubeconfig --name "$KIND_CLUSTER" --kubeconfig "$KUBECONFIG"
-          if ! kubectl cluster-info --request-timeout=5s >/dev/null 2>&1; then
-            # Docker Desktop (macOS/Windows): the job container's 127.0.0.1 is
-            # not the machine running kind; reach the published API port via
-            # host.docker.internal and keep TLS verification (cert SAN: localhost).
-            server=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}')
-            kubectl config set-cluster "kind-$KIND_CLUSTER" \
-              --server="${server/127.0.0.1/host.docker.internal}" --tls-server-name=localhost
+          if [ -n "${ACT:-}" ]; then
+            echo "Running under act: expecting container-to-container access via the 'kind' Docker network."
+            if ! getent hosts "${KIND_CLUSTER}-control-plane" >/dev/null 2>&1; then
+              echo "::error::Cannot resolve ${KIND_CLUSTER}-control-plane from this act job container."
+              echo "::error::Launch act with --network kind (see .actrc.example at the repo root)."
+              exit 1
+            fi
+            kind export kubeconfig --name "$KIND_CLUSTER" --internal --kubeconfig "$KUBECONFIG"
+          else
+            kind export kubeconfig --name "$KIND_CLUSTER" --kubeconfig "$KUBECONFIG"
           fi
           kubectl cluster-info
           echo "Currently deployed image:"
