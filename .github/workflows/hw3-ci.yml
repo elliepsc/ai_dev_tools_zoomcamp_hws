@@ -165,17 +165,17 @@ jobs:
           version: "0.12.18"   # pinned: reproducible, no GitHub API lookup
           enable-cache: false
 
-      - name: Post-deploy smoke test through port-forward
+      - name: Post-deploy smoke test through port-forward (read-only)
+        # tests/smoke is the ONLY suite this job runs: it's the sole thing
+        # that hits a live, already-deployed instance (never a throwaway
+        # one), so it must never write. See tests/smoke/test_smoke.py's own
+        # guard test, which fails the suite on any POST/PUT/PATCH/DELETE.
+        # Integration tests (which do write) only ever run in the `test` job,
+        # against the throwaway Postgres service above.
         run: |
           kubectl -n "$NAMESPACE" port-forward svc/agent-relay 18080:8000 > "$RUNNER_TEMP/pf.log" 2>&1 &
           for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18080/ready && break; sleep 1; done
-          expected=$(sed -n 's:.*<h1>\(.*\)</h1>.*:\1:p' dashboard.html)
-          deployed=$(curl -fsS http://127.0.0.1:18080/ | sed -n 's:.*<h1>\(.*\)</h1>.*:\1:p')
-          echo "Source heading:   $expected"
-          echo "Deployed heading: $deployed"
-          test "$deployed" = "$expected"
           uv sync --locked
-          RELAY_BASE_URL=http://127.0.0.1:18080 RELAY_REQUIRE_SERVER=1 RELAY_EXPECT_HEADING="$expected" \
-            uv run pytest tests/integration -v
+          RELAY_BASE_URL=http://127.0.0.1:18080 RELAY_REQUIRE_SERVER=1 uv run pytest tests/smoke -v
           kubectl -n "$NAMESPACE" get deployment agent-relay \
             -o jsonpath='Deployed image: {.spec.template.spec.containers[0].image}{"\n"}'
