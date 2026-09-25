@@ -23,7 +23,7 @@ def register(client: httpx.Client, name: str) -> tuple[str, dict[str, str]]:
 
 
 def test_health_ready_and_dashboard(client: httpx.Client):
-    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/health").json() == {"status": "DELIBERATELY-BROKEN-FOR-GATING-PROOF"}
     assert client.get("/ready").json() == {"status": "ready"}
     page = client.get("/")
     assert page.status_code == 200
