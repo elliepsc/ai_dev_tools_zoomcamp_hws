@@ -1,0 +1,73 @@
+=== 2026-09-25T15:30:58Z (UTC) ===
+OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
+cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
+
+$ source scripts/toolchain.sh
+OK   kind: kind version 0.30.0
+OK   kubectl: Client Version: v1.34.1
+OK   uv: uv 0.12.18 (01cb90c1a 2026-09-22 x86_64-pc-windows-msvc)
+INFO act: act version 0.2.89
+OK   docker: Docker version 27.5.1, build 9f9e405
+OK   docker compose: Docker Compose version v2.32.4-desktop.1
+toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
+[RC=0]
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+$ kubectl -n agent-relay get deployment agent-relay -o jsonpath='{.spec.template.spec.containers[0].image}'
+agent-relay:v2[RC=0]
+$ kubectl -n agent-relay set image deployment/agent-relay app=agent-relay:does-not-exist-xyz
+deployment.apps/agent-relay image updated
+[RC=0]
+$ kubectl -n agent-relay get pods -l app.kubernetes.io/name=agent-relay -o wide
+NAME                           READY   STATUS             RESTARTS   AGE     IP            NODE                        NOMINATED NODE   READINESS GATES
+agent-relay-547bf59588-wr7vg   0/1     ImagePullBackOff   0          29s     10.244.0.14   agent-relay-control-plane   <none>           <none>
+agent-relay-696cc69c-pb79m     1/1     Running            0          8m10s   10.244.0.12   agent-relay-control-plane   <none>           <none>
+agent-relay-696cc69c-qq8gh     1/1     Running            0          8m7s    10.244.0.13   agent-relay-control-plane   <none>           <none>
+[RC=0]
+$ kubectl -n agent-relay get deployment agent-relay
+NAME          READY   UP-TO-DATE   AVAILABLE   AGE
+agent-relay   2/2     1            2           24m
+[RC=0]
+port 8080 busy, trying next
+port 8081 busy, trying next
+port check: 8082 is free (netstat -ano | grep ":8082 " -> no match)
+$ curl -fsS -o /dev/null -w 'http_code=%{http_code}\n' http://127.0.0.1:8082/ready
+http_code=200
+curl: (23) client returned ERROR on write of 18 bytes
+[RC=23]
+ASSERT PASS: /ready still returns 200 while the new pod is ImagePullBackOff
+[RC=0]
+# served heading during failure: <h1>Agent Relay v2</h1>
+ASSERT PASS: old pods still serve agent-relay:v2's heading during the failed rollout
+[RC=0]
+# NOTE: the record()'d curl call above shows [RC=23] ("client returned
+# ERROR on write of 18 bytes") even though it printed http_code=200.
+# Real, not edited out. The assertion right after it does NOT rely on that
+# RC or that captured line -- it uses a separate, unpiped curl invocation
+# (READY_CODE=$(curl ... -w '%{http_code}')) whose own real exit was clean,
+# which is what the ASSERT PASS is actually based on. Root cause of the
+# RC=23 not investigated further here (not load-bearing for the assertion).
+$ kubectl -n agent-relay rollout undo deployment/agent-relay
+deployment.apps/agent-relay rolled back
+[RC=0]
+$ kubectl -n agent-relay rollout status deployment/agent-relay --timeout=180s
+deployment "agent-relay" successfully rolled out
+[RC=0]
+$ kubectl -n agent-relay get pods -l app.kubernetes.io/name=agent-relay -o wide
+NAME                           READY   STATUS        RESTARTS   AGE     IP            NODE                        NOMINATED NODE   READINESS GATES
+agent-relay-547bf59588-wr7vg   0/1     Terminating   0          74s     10.244.0.14   agent-relay-control-plane   <none>           <none>
+agent-relay-696cc69c-pb79m     1/1     Running       0          8m55s   10.244.0.12   agent-relay-control-plane   <none>           <none>
+agent-relay-696cc69c-qq8gh     1/1     Running       0          8m52s   10.244.0.13   agent-relay-control-plane   <none>           <none>
+[RC=0]
+# deployed image after undo: agent-relay:v2
+ASSERT PASS: deployed image back to agent-relay:v2 after rollout undo
+[RC=0]
+# port-forward stopped (pid=81).
