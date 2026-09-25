@@ -1,4 +1,6 @@
-=== 2026-09-25T13:59:51Z (UTC) ===
+# Supersedes the version in commit 845f632: that capture ran uv 0.9.26 instead of the pinned 0.12.18 (record() piped `source toolchain.sh` into a subshell).
+
+=== 2026-09-25T14:49:46Z (UTC) ===
 OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
 cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
 
@@ -11,23 +13,87 @@ OK   docker: Docker version 27.5.1, build 9f9e405
 OK   docker compose: Docker Compose version v2.32.4-desktop.1
 toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
 [RC=0]
-# port check before use: 18001 must be free
-$ netstat -ano | grep ":18001 " ; echo "(no output above = port free)"
-(no output above = port free)
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+port check: 18001 is free (netstat -ano | grep ":18001 " -> no match)
+$ rm -rf .venv agent-relay.db agent-relay.db-shm agent-relay.db-wal
 [RC=0]
 $ uv sync --locked
-Resolved 35 packages in 1ms
-Audited 33 packages in 4ms
+Using CPython 3.11.9 interpreter at: C:\Users\Ellie Pro\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe
+Creating virtual environment at: .venv
+Resolved 35 packages in 23ms
+Downloading pygments (1.2MiB)
+Downloading sqlalchemy (2.1MiB)
+Downloading psycopg-binary (3.5MiB)
+Downloading pydantic-core (1.9MiB)
+ Downloaded pygments
+ Downloaded pydantic-core
+ Downloaded sqlalchemy
+ Downloaded psycopg-binary
+Prepared 33 packages in 20.86s
+Installed 33 packages in 505ms
+ + annotated-doc==0.0.5
+ + annotated-types==0.8.0
+ + anyio==4.14.2
+ + certifi==2026.7.22
+ + click==8.5.0
+ + colorama==0.4.6
+ + fastapi==0.141.1
+ + greenlet==3.5.5
+ + h11==0.16.0
+ + httpcore==1.0.9
+ + httptools==0.8.0
+ + httpx==0.28.1
+ + idna==3.19
+ + iniconfig==2.3.0
+ + packaging==26.3
+ + pluggy==1.6.0
+ + psycopg==3.3.5
+ + psycopg-binary==3.3.5
+ + pydantic==2.13.5
+ + pydantic-core==2.46.5
+ + pydantic-settings==2.15.0
+ + pygments==2.21.0
+ + pytest==9.1.1
+ + python-dotenv==1.2.3
+ + pyyaml==6.0.3
+ + sqlalchemy==2.0.52
+ + starlette==1.6.0
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + tzdata==2026.3
+ + uvicorn==0.52.4
+ + watchfiles==1.2.0
+ + websockets==17.1
+[RC=0]
+$ cat .venv/pyvenv.cfg
+home = C:\Users\Ellie Pro\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0
+implementation = CPython
+uv = 0.12.18
+version_info = 3.11.9
+include-system-site-packages = false
+prompt = agent-relay
+[RC=0]
+ASSERT PASS: .venv built by the pinned uv (0.12.x)
 [RC=0]
 # starting uvicorn on 127.0.0.1:18001 (background), waiting for /ready
-uvicorn pid=890
+uvicorn pid=1869
 $ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:18001/ready && echo && break; sleep 1; done
+curl: (7) Failed to connect to 127.0.0.1 port 18001 after 2044 ms: Could not connect to server
 {"status":"ready"}
 [RC=0]
 $ uv run python scripts/demo_flow.py --base-url http://127.0.0.1:18001
-sent      -> {'task_id': 'task_51c93fa7df2542baadd8c752a91c859f', 'status': 'queued'}
+sent      -> {'task_id': 'task_08059522c3a54efeb41aaac4ff8868f8', 'status': 'queued'}
 claimed   -> attempt 1 status seen by sender: processing
-completed -> {'task_id': 'task_51c93fa7df2542baadd8c752a91c859f', 'status': 'completed'}
+completed -> {'task_id': 'task_08059522c3a54efeb41aaac4ff8868f8', 'status': 'completed'}
 sender sees: {"status": "completed", "input": "hello relay", "output": "HELLO RELAY", "attempt_count": 1}
 
 Paste this sender token into the dashboard: agt_***
@@ -47,6 +113,6 @@ tests/integration/test_task_flow.py::test_unauthenticated_calls_are_rejected PAS
 tests/integration/test_task_flow.py::test_empty_inbox_returns_204 PASSED [ 80%]
 tests/integration/test_task_flow.py::test_shipped_worker_process_completes_task PASSED [100%]
 
-============================== 5 passed in 2.40s ==============================
+============================== 5 passed in 7.16s ==============================
 [RC=0]
-# stopping uvicorn (pid=890)
+# stopping uvicorn (pid=1869)

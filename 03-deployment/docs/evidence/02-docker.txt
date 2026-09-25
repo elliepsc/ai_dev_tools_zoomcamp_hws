@@ -1,4 +1,6 @@
-=== 2026-09-25T13:50:53Z (UTC) ===
+# Supersedes the version in commit 845f632: that capture ran uv 0.9.26 instead of the pinned 0.12.18 (record() piped `source toolchain.sh` into a subshell).
+
+=== 2026-09-25T14:50:48Z (UTC) ===
 OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
 cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
 
@@ -11,6 +13,60 @@ OK   docker: Docker version 27.5.1, build 9f9e405
 OK   docker compose: Docker Compose version v2.32.4-desktop.1
 toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
 [RC=0]
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+$ rm -rf .venv
+[RC=0]
+$ uv sync --locked
+Using CPython 3.11.9 interpreter at: C:\Users\Ellie Pro\AppData\Local\Microsoft\WindowsApps\PythonSoftwareFoundation.Python.3.11_qbz5n2kfra8p0\python.exe
+Creating virtual environment at: .venv
+Resolved 35 packages in 1ms
+Installed 33 packages in 498ms
+ + annotated-doc==0.0.5
+ + annotated-types==0.8.0
+ + anyio==4.14.2
+ + certifi==2026.7.22
+ + click==8.5.0
+ + colorama==0.4.6
+ + fastapi==0.141.1
+ + greenlet==3.5.5
+ + h11==0.16.0
+ + httpcore==1.0.9
+ + httptools==0.8.0
+ + httpx==0.28.1
+ + idna==3.19
+ + iniconfig==2.3.0
+ + packaging==26.3
+ + pluggy==1.6.0
+ + psycopg==3.3.5
+ + psycopg-binary==3.3.5
+ + pydantic==2.13.5
+ + pydantic-core==2.46.5
+ + pydantic-settings==2.15.0
+ + pygments==2.21.0
+ + pytest==9.1.1
+ + python-dotenv==1.2.3
+ + pyyaml==6.0.3
+ + sqlalchemy==2.0.52
+ + starlette==1.6.0
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.4
+ + tzdata==2026.3
+ + uvicorn==0.52.4
+ + watchfiles==1.2.0
+ + websockets==17.1
+[RC=0]
+ASSERT PASS: .venv built by the pinned uv (0.12.x)
+[RC=0]
+port check: 8001 is free (netstat -ano | grep ":8001 " -> no match)
 $ docker build -t agent-relay:local .
 #0 building with "desktop-linux" instance using docker driver
 
@@ -26,99 +82,51 @@ $ docker build -t agent-relay:local .
 #3 DONE 0.0s
 
 #4 [builder 1/5] FROM docker.io/library/python:3.11.15-slim
-#4 DONE 0.1s
+#4 DONE 0.0s
 
 #5 [internal] load build context
-#5 transferring context: 266.97kB 0.0s done
-#5 DONE 0.1s
+#5 transferring context: 340B done
+#5 DONE 0.0s
 
-#6 [runtime 2/5] RUN groupadd --system --gid 10001 relay  && useradd --system --uid 10001 --gid relay --home-dir /app --no-create-home relay  && mkdir -p /data && chown relay:relay /data
-#6 0.575 useradd warning: relay's uid 10001 is greater than SYS_UID_MAX 999
-#6 DONE 0.6s
+#6 [builder 2/5] RUN pip install --no-cache-dir --root-user-action=ignore "uv==0.12.*"
+#6 CACHED
 
-#7 [runtime 3/5] WORKDIR /app
-#7 DONE 0.0s
+#7 [builder 5/5] RUN uv sync --locked --no-dev --no-install-project
+#7 CACHED
 
-#8 [builder 2/5] RUN pip install --no-cache-dir --root-user-action=ignore "uv==0.12.*"
-#8 2.928 Collecting uv==0.12.*
-#8 3.060   Downloading uv-0.12.19-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (11 kB)
-#8 3.097 Downloading uv-0.12.19-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (20.5 MB)
-#8 81.60    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ 20.5/20.5 MB 323.5 kB/s eta 0:00:00
-#8 81.72 Installing collected packages: uv
-#8 82.10 Successfully installed uv-0.12.19
-#8 82.21 
-#8 82.21 [notice] A new release of pip is available: 24.0 -> 26.2.1
-#8 82.21 [notice] To update, run: pip install --upgrade pip
-#8 DONE 82.4s
+#8 [runtime 4/5] COPY --from=builder /app/.venv /app/.venv
+#8 CACHED
 
-#9 [builder 3/5] WORKDIR /app
-#9 DONE 0.0s
+#9 [runtime 3/5] WORKDIR /app
+#9 CACHED
 
 #10 [builder 4/5] COPY pyproject.toml uv.lock .python-version ./
-#10 DONE 0.1s
+#10 CACHED
 
-#11 [builder 5/5] RUN uv sync --locked --no-dev --no-install-project
-#11 0.512 Using CPython 3.11.15 interpreter at: /usr/local/bin/python3.11
-#11 0.512 Creating virtual environment at: .venv
-#11 0.518 Resolved 35 packages in 1ms
-#11 1.844 Downloading psycopg-binary (5.0MiB)
-#11 1.849 Downloading sqlalchemy (3.2MiB)
-#11 1.849 Downloading pydantic-core (2.0MiB)
-#11 1.850 Downloading uvloop (3.6MiB)
-#11 44.26  Downloaded pydantic-core
-#11 56.06  Downloaded sqlalchemy
-#11 58.63  Downloaded uvloop
-#11 63.61  Downloaded psycopg-binary
-#11 63.61 Prepared 24 packages in 1m 02s
-#11 63.78 Installed 24 packages in 172ms
-#11 64.20 Bytecode compiled 810 files in 423ms
-#11 64.20  + annotated-doc==0.0.5
-#11 64.20  + annotated-types==0.8.0
-#11 64.20  + anyio==4.14.2
-#11 64.20  + click==8.5.0
-#11 64.20  + fastapi==0.141.1
-#11 64.20  + greenlet==3.5.5
-#11 64.20  + h11==0.16.0
-#11 64.20  + httptools==0.8.0
-#11 64.20  + idna==3.19
-#11 64.20  + psycopg==3.3.5
-#11 64.20  + psycopg-binary==3.3.5
-#11 64.20  + pydantic==2.13.5
-#11 64.20  + pydantic-core==2.46.5
-#11 64.20  + pydantic-settings==2.15.0
-#11 64.20  + python-dotenv==1.2.3
-#11 64.20  + pyyaml==6.0.3
-#11 64.20  + sqlalchemy==2.0.52
-#11 64.20  + starlette==1.6.0
-#11 64.20  + typing-extensions==4.16.0
-#11 64.20  + typing-inspection==0.4.4
-#11 64.20  + uvicorn==0.52.4
-#11 64.20  + uvloop==0.22.1
-#11 64.20  + watchfiles==1.2.0
-#11 64.20  + websockets==17.1
-#11 DONE 64.3s
+#11 [builder 3/5] WORKDIR /app
+#11 CACHED
 
-#12 [runtime 4/5] COPY --from=builder /app/.venv /app/.venv
-#12 DONE 0.4s
+#12 [runtime 2/5] RUN groupadd --system --gid 10001 relay  && useradd --system --uid 10001 --gid relay --home-dir /app --no-create-home relay  && mkdir -p /data && chown relay:relay /data
+#12 CACHED
 
 #13 [runtime 5/5] COPY --chown=relay:relay main.py database.py storage.py schemas.py errors.py dashboard.py worker.py dashboard.html ./
-#13 DONE 0.1s
+#13 CACHED
 
 #14 exporting to image
-#14 exporting layers
-#14 exporting layers 0.3s done
+#14 exporting layers done
 #14 writing image sha256:fccabb6a20d97a97ed92ad50c65fd2dc4a257c82878bc2213bf6ca5c1be15ae8 done
 #14 naming to docker.io/library/agent-relay:local done
-#14 DONE 0.3s
+#14 DONE 0.0s
 [RC=0]
 $ docker run -d --name agent-relay-local -p 8001:8000 agent-relay:local
-4a7e499e783acdecc842456846b37eeab70baa6cb33e5db7d0cbbeccafe46034
+214fc57e1877107597fae018b575f153b64eb3a4999db200985e6a79288f0be7
 [RC=0]
 $ docker exec agent-relay-local id
 uid=10001(relay) gid=10001(relay) groups=10001(relay)
 [RC=0]
+ASSERT PASS: container runs as uid 10001
+[RC=0]
 $ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8001/ready && echo && break; sleep 1; done
-curl: (52) Empty reply from server
 {"status":"ready"}
 [RC=0]
 $ RELAY_BASE_URL=http://127.0.0.1:8001 RELAY_REQUIRE_SERVER=1 uv run pytest tests/integration -v
@@ -136,7 +144,7 @@ tests/integration/test_task_flow.py::test_unauthenticated_calls_are_rejected PAS
 tests/integration/test_task_flow.py::test_empty_inbox_returns_204 PASSED [ 80%]
 tests/integration/test_task_flow.py::test_shipped_worker_process_completes_task PASSED [100%]
 
-============================== 5 passed in 3.00s ==============================
+============================== 5 passed in 5.69s ==============================
 [RC=0]
 $ docker rm -f agent-relay-local
 agent-relay-local
