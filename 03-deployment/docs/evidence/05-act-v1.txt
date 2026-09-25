@@ -1,0 +1,117 @@
+=== 2026-09-25T15:16:28Z (UTC) ===
+OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
+cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
+
+$ source scripts/toolchain.sh
+OK   kind: kind version 0.30.0
+OK   kubectl: Client Version: v1.34.1
+OK   uv: uv 0.12.18 (01cb90c1a 2026-09-22 x86_64-pc-windows-msvc)
+INFO act: act version 0.2.89
+OK   docker: Docker version 27.5.1, build 9f9e405
+OK   docker compose: Docker Compose version v2.32.4-desktop.1
+toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
+[RC=0]
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+$ git -C .. log -1 --oneline
+e35b987 chore(hw3): dashboard heading -> Agent Relay (v1, for act evidence)
+[RC=0]
+$ grep -o '<h1>.*</h1>' dashboard.html
+<h1>Agent Relay</h1>
+[RC=0]
+$ act push -W .github/workflows/hw3-ci.yml --network kind -P ubuntu-latest=catthehacker/ubuntu:act-latest
+time="2026-09-25T17:16:32+02:00" level=info msg="Using docker host 'npipe:////./pipe/docker_engine', and daemon socket 'npipe:////./pipe/docker_engine'"
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] ⭐ Run Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🚀  Start image=catthehacker/ubuntu:act-latest
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   🐳  docker pull image=postgres:16.11 platform= username= forcePull=true
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.54/images/create?fromImage=docker.io%2Flibrary%2Fpostgres&tag=16.11, check if the server supports the requested API version
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   ❌  Failure - Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🏁  Job failed
+Error: request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.54/images/create?fromImage=docker.io%2Flibrary%2Fpostgres&tag=16.11, check if the server supports the requested API version
+[RC=1]
+# act's docker client requested API v1.54, but the engine only exposes v1.47 (docker version --format Server.APIVersion). Confirmed docker pull postgres:16.11 works fine directly (RC=0). Retrying act with DOCKER_API_VERSION=1.47 forced, a standard override for exactly this negotiation mismatch -- not a workaround for the --network kind connectivity check, which was never reached.
+$ act push -W .github/workflows/hw3-ci.yml --network kind -P ubuntu-latest=catthehacker/ubuntu:act-latest
+time="2026-09-25T17:17:18+02:00" level=info msg="Using docker host 'npipe:////./pipe/docker_engine', and daemon socket 'npipe:////./pipe/docker_engine'"
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] ⭐ Run Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🚀  Start image=catthehacker/ubuntu:act-latest
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   🐳  docker pull image=postgres:16.11 platform= username= forcePull=true
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.47/images/create?fromImage=docker.io%2Flibrary%2Fpostgres&tag=16.11, check if the server supports the requested API version
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   ❌  Failure - Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🏁  Job failed
+Error: request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.47/images/create?fromImage=docker.io%2Flibrary%2Fpostgres&tag=16.11, check if the server supports the requested API version
+[RC=1]
+# second retry attempt: DOCKER_API_VERSION=1.47 alone did not fix it (still 500, now correctly at v1.47 -- ruling out API-version mismatch as the cause). act's own --pull flag (default true) causes forcePull=true on service containers; trying --pull=false, a documented act flag targeting exactly this symptom, not an improvised network workaround. postgres:16.11 is already present locally (confirmed earlier), so this should not need any pull at all.
+$ act push -W .github/workflows/hw3-ci.yml --network kind --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest
+time="2026-09-25T17:18:24+02:00" level=info msg="Using docker host 'npipe:////./pipe/docker_engine', and daemon socket 'npipe:////./pipe/docker_engine'"
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] ⭐ Run Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🚀  Start image=catthehacker/ubuntu:act-latest
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   🐳  docker pull image=postgres:16.11 platform= username= forcePull=false
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] unable to determine if image already exists for image 'postgres:16.11' (): request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.54/images/postgres:16.11/json, check if the server supports the requested API version
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   ❌  Failure - Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🏁  Job failed
+Error: unable to determine if image already exists for image 'postgres:16.11' (): request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.54/images/postgres:16.11/json, check if the server supports the requested API version
+[RC=1]
+# STOP: --pull=false confirmed the flag worked (forcePull=false in the log,
+# vs true before), but act STILL got a 500 -- now on a DIFFERENT endpoint
+# (GET images/postgres:16.11/json, an inspect call, not a pull) and back at
+# API v1.54 (DOCKER_API_VERSION=1.47 was not re-exported in this last call).
+# This rules out both working hypotheses tried so far: it is not an API
+# version mismatch (failed identically at v1.47 and v1.54), and it is not
+# specific to force-pulling (failed on a plain inspect too). Every act-
+# initiated Docker Engine API call over this machine's npipe transport for
+# an image operation 500s, while the exact same operations via the plain
+# `docker` CLI (a different client implementation) succeed every time.
+# This looks like a genuine incompatibility between act 0.2.89's bundled
+# Docker client and this Docker Desktop version's npipe API server, not a
+# config issue on this repo's side. --network kind was never reached: the
+# test job's service-container setup fails before the deploy job even
+# starts, so this is NOT the act<->kind connectivity failure the STOP rule
+# names explicitly -- but two real, evidence-based fix attempts (~25-30 min)
+# did not resolve it, so stopping here rather than continue guessing.
+# CORRECTION: the conclusion above ("both hypotheses refuted") is WRONG.
+# Attempt 3 (--pull=false) shows the error back at API v1.54, not v1.47 --
+# meaning DOCKER_API_VERSION=1.47 was NOT actually in effect for that call
+# (it was exported in a PREVIOUS Bash tool call, which does not survive to
+# the next one -- the exact same cross-call-state bug documented earlier in
+# 04-kind.txt, that I still made again here). So the combination
+# 'DOCKER_API_VERSION=1.47 AND --pull=false together' was never actually
+# tested. That is the real gap, not a confirmed dead end.
+# Also: the earlier 'curl --unix-socket //./pipe/docker_engine' diagnostic
+# is not a valid test on Windows -- curl's --unix-socket expects a real
+# Unix domain socket, which a Windows named pipe is not, without a
+# translation layer this machine doesn't have. Its empty output proved
+# nothing either way and should not have been cited as evidence.
+# final attempt, same call: DOCKER_API_VERSION=1.47 exported here AND act launched in this same Bash invocation (no cross-call gap this time).
+ASSERT PASS: DOCKER_API_VERSION=1.47 is actually set in this shell right before launching act
+[RC=0]
+$ act push -W .github/workflows/hw3-ci.yml --network kind --pull=false -P ubuntu-latest=catthehacker/ubuntu:act-latest
+time="2026-09-25T17:20:39+02:00" level=info msg="Using docker host 'npipe:////./pipe/docker_engine', and daemon socket 'npipe:////./pipe/docker_engine'"
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] ⭐ Run Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🚀  Start image=catthehacker/ubuntu:act-latest
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   🐳  docker pull image=postgres:16.11 platform= username= forcePull=false
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] unable to determine if image already exists for image 'postgres:16.11' (): request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.47/images/postgres:16.11/json, check if the server supports the requested API version
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)]   ❌  Failure - Set up job
+[HW3 CI/CD (Agent Relay)/Tests (unit + integration on PostgreSQL)] 🏁  Job failed
+Error: unable to determine if image already exists for image 'postgres:16.11' (): request returned 500 Internal Server Error for API route and version http://%2F%2F.%2Fpipe%2Fdocker_engine/v1.47/images/postgres:16.11/json, check if the server supports the requested API version
+[RC=1]
+# LIMIT: this time DOCKER_API_VERSION=1.47 was genuinely in effect (ASSERT
+# PASS right before launch, in the same shell call as act) and --pull=false
+# was confirmed (forcePull=false in the log). The 500 still happened,
+# correctly at v1.47 this time -- so this really was the combined test,
+# and it really fails. act 0.2.89 is incompatible with Docker Desktop
+# 27.5.1 (API 1.47) on this machine, over the Windows npipe transport, for
+# any image-related Docker Engine API call it issues (pull and inspect
+# both 500, at any API version tried). Probable fix: upgrading Docker
+# Desktop and/or act -- deliberately NOT done here (out of scope, risk to
+# other projects on this machine that depend on the current Docker Desktop
+# version). act v1/v2/gating evidence on this machine is deferred to Plan B
+# (direct kind rollouts, no act) and to the real GitHub Actions run, which
+# uses a Linux runner unaffected by this Windows-npipe-specific issue.
