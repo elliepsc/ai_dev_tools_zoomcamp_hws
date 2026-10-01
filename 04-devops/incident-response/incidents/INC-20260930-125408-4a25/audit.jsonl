@@ -1,0 +1,7 @@
+{"ts": "2026-09-30T12:54:08+00:00", "step": "incident_opened", "fingerprint": "2eb1c12796e548de", "alertname": "ResponderTest"}
+{"ts": "2026-09-30T12:54:08+00:00", "step": "evidence_collected", "route": null, "logs": 0, "traces": 0, "samples": []}
+{"ts": "2026-09-30T12:54:08+00:00", "step": "autonomy_level", "level": 0, "name": "observe", "reason": "test notification, never touch code or runtime", "agent_mode": "read_only"}
+{"ts": "2026-09-30T12:54:08+00:00", "step": "agent_started", "agent": "claude-code", "version": "2.1.285 (Claude Code)", "model": "cli default", "mode": "read_only", "cwd": "/home/claude/order-tracker"}
+{"ts": "2026-09-30T12:54:15+00:00", "step": "agent_finished", "rc": 0, "duration_s": 7.3, "meta": {"total_cost_usd": 0.0704216, "num_turns": 2, "duration_ms": 5528, "session_id": "f87f3745-55a6-56d4-a003-a09ad855ac81", "is_error": false, "subtype": "success", "stop_reason": "tool_use", "models_used": ["claude-haiku-4-5-20251001", "claude-sonnet-5-5"], "permission_denials": 0}}
+{"ts": "2026-09-30T12:54:15+00:00", "step": "policy_decision", "allowed": true, "outcome": "no_change"}
+{"ts": "2026-09-30T12:54:15+00:00", "step": "incident_closed", "state": "closed", "note": "no action required"}

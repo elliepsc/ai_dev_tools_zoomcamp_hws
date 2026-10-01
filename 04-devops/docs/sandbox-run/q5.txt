@@ -1,0 +1,15 @@
+### Q5 (definitive, clean state)
+{"accepted":[{"incident":"INC-20260930-125408-4a25","status":"queued"}]}
+state=closed
+incident=INC-20260930-125408-4a25
+classification: test_notification | action: none | confidence: 0.97
+--- final_message
+INC-20260930-125408-4a25: the alert is labelled test="true" (ResponderTest).
+There are no 5xx responses, error logs or error traces. /healthz returns 200 and the container is healthy.
+Nothing was changed and there is nothing to fix.
+Verdict: test_notification, no action needed.
+# Agent tool calls
+
+1. `StructuredOutput` [ok] {"classification": "test_notification", "summary": "Alert is a responder test notification (label test=\"true\", alertname ResponderT
+
+Permission denials: 0

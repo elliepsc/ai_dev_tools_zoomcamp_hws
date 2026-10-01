@@ -1,0 +1,11 @@
+$ /home/claude/order-tracker/incident-response/runbooks/rollback.sh /home/claude/order-tracker order-tracker:rollback-inc-20260930-123438-47f5 33ab4e7
+app now runs order-tracker:rollback-inc-20260930-123438-47f5
+branch reset to 33ab4e7
+ Container order-tracker-app-1 Recreate 
+ Container order-tracker-app-1 Recreated 
+ Container order-tracker-app-1 Starting 
+ Container order-tracker-app-1 Started 
+ Container order-tracker-app-1 Waiting 
+ Container order-tracker-app-1 Healthy 
+
+exit=0

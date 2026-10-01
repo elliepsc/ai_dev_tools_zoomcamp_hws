@@ -1,0 +1,36 @@
+diff --git a/app/main.py b/app/main.py
+index d77a205..8731872 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -78,7 +78,7 @@ def order_detail(row):
+     order = as_dict(row)
+     if order["priority"] == "express":
+         placed_at = datetime.fromisoformat(order["created_at"])
+-        estimated_at = placed_at.replace(day=placed_at.day + 2)
++        estimated_at = placed_at + timedelta(days=2)
+         order["estimated_delivery"] = estimated_at.date().isoformat()
+     return order
+ 
+diff --git a/tests/test_api.py b/tests/test_api.py
+index 2a38e31..a7f5d4d 100644
+--- a/tests/test_api.py
++++ b/tests/test_api.py
+@@ -31,5 +31,18 @@ def test_create_and_update_order(client):
+     assert updated.json()["status"] == "shipped"
+ 
+ 
++def test_express_estimate_crosses_month_end(client):
++    db = main.connect()
++    with db:
++        db.execute(
++            "INSERT INTO orders VALUES (?, ?, ?, ?, ?, ?)",
++            ("express-eom", "Kim", "Cable", "express", "preparing", "2026-01-31T10:00:00+00:00"),
++        )
++    db.close()
++    response = client.get("/api/orders/express-eom")
++    assert response.status_code == 200
++    assert response.json()["estimated_delivery"] == "2026-02-02"
++
++
+ def test_missing_order(client):
+     assert client.get("/api/orders/missing").status_code == 404

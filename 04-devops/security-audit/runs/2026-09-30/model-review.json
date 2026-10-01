@@ -1,0 +1,158 @@
+{
+  "tool": "claude-code headless (read-only)",
+  "models": [
+    "claude-haiku-4-5-20251001",
+    "claude-sonnet-5-5"
+  ],
+  "num_turns": 51,
+  "cost_usd": 0.8374836,
+  "output": {
+    "summary": "Read-only audit of app/, incident-response/, observability/, compose.yaml and Dockerfile. The design is generally sound: the model has no Docker or network tools, side effects go through allowlisted runbooks, subprocess calls use argv lists with no shell, routes are regex-validated before use in queries, the agent env is allowlisted, and incident IDs are safe against traversal. The main residual risk is that alert intake trusts loopback and browser-reachable requests, and a passing patch in app/** is auto-deployed at the default level 2. The responder also runs agent-authored test code on the host before the policy gate. Two of the 12 findings are high, five are medium, and the rest are low or info. Bash was unavailable, so I could not run `git ls-files`. Whether incident records are committed is inferred from .gitignore, not verified. The known express-date bug in order_detail was not reported.",
+    "findings": [
+      {
+        "id": "M-01",
+        "title": "Loopback trust on POST /alerts lets any browser page or local process trigger an incident run (CSRF-style, no Content-Type check)",
+        "severity": "high",
+        "category": "authn-authz",
+        "file": "incident-response/responder/server.py",
+        "line": 55,
+        "evidence": "def _authorized(request):\n    host = request.client.host ...\n        if ipaddress.ip_address(host).is_loopback:\n            return True\n...\n    payload = await request.json()   # line 80: parsed regardless of Content-Type",
+        "impact": "Any web page open in the operator's browser can send a simple cross-origin POST to http://127.0.0.1:8001/alerts (text/plain body, no preflight). The request comes from loopback, so no token is required, and the attacker controls alert labels and annotations. That drives evidence collection and an agent run, and at default level 2 an edit, deploy and rollback cycle. The same applies to any local process or SSRF that can reach localhost. The 4000-char alert JSON is also a direct prompt-injection channel. Damage is bounded by the 6/hr budget and the gate, but the budget can be used up (see M-06).",
+        "recommendation": "Require the bearer token from every client, loopback included, and for local curl use a token from .env. Also reject requests whose Content-Type is not application/json, and check Host/Origin headers.",
+        "confidence": "high"
+      },
+      {
+        "id": "M-02",
+        "title": "Agent-authored test code is executed on the host by the responder before the policy gate, with a near-full environment",
+        "severity": "high",
+        "category": "excessive-agency",
+        "file": "incident-response/responder/pipeline.py",
+        "line": 273,
+        "evidence": "run(['git','add','-A'], workdir)  # 261\n...\ntrc, tout = run(test_cmd, workdir, timeout=600, env={'UV_NO_PROGRESS': '1'})  # 273, runs before gate_patch at 294\n...\nbase = {k: v for k, v in os.environ.items() if k not in {'VIRTUAL_ENV', 'RESPONDER_TOKEN'}}  # 86",
+        "impact": "The model can write any file in the worktree, including tests/*.py, conftest.py and pyproject.toml, which pytest and uv read. The responder runs `uv run --frozen pytest` in that worktree with the operator's environment: it keeps GRAFANA_ADMIN_PASSWORD, cloud credentials, SSH_AUTH_SOCK, ANTHROPIC_* and access to the Docker socket. Only RESPONDER_TOKEN and VIRTUAL_ENV are removed. It happens before paths_allowlisted, so a patch that edits forbidden files is rejected too late. A prompt-injected agent gets host code execution outside its own tool sandbox, and this bypasses every allow and deny list in agents.py. The capability table (row 5) understates it.",
+        "recommendation": "Run the tests in a container or dedicated unprivileged user with no network and a minimal env (reuse agents.agent_env-style allowlisting, without the ANTHROPIC key). Check paths_allowlisted and forbidden_paths (pyproject.toml, conftest.py, uv.lock and anything outside app/ and tests/) before executing anything from the worktree. Also disable pytest plugin auto-loading with -p no:cacheprovider, `--noconftest` and `-c /dev/null`.",
+        "confidence": "high"
+      },
+      {
+        "id": "M-03",
+        "title": "Autonomous production deploy of model-written code at default level 2; the gate cannot detect malicious-but-passing changes",
+        "severity": "medium",
+        "category": "excessive-agency",
+        "file": "incident-response/autonomy-policy.yaml",
+        "line": 13,
+        "evidence": "default_level: 2\n...\nallowed_paths: [\"app/**\", \"tests/**\"]\nmax_changed_lines: 80\nrequire_tests_pass: true",
+        "impact": "A spoofed or injected alert (M-01, M-06, M-08) can lead the agent to write an 80-line change in app/** together with a test that passes on the responder's own run. The gate checks confidence (which the model self-reports), paths, size and test results, but not the semantic content of the diff. The responder then runs deploy-fix.sh, which rebuilds and restarts the production app with no human review. An auth bypass, data exfiltration or telemetry backdoor in app/ would be deployed. The 'remediate' level is documented as a homework default.",
+        "recommendation": "Ship with default_level: 1 (branch and PR only) and require human approval for deploy. Alternatively add a static diff review (deny new imports, network, subprocess, file and env access in the patch), require a signed alert source, and require alert corroboration against Prometheus before any level above 0.",
+        "confidence": "high"
+      },
+      {
+        "id": "M-04",
+        "title": "Read-only endpoints on the responder are unauthenticated and the service binds to 0.0.0.0 by default",
+        "severity": "medium",
+        "category": "network-exposure",
+        "file": "incident-response/responder/server.py",
+        "line": 148,
+        "evidence": "host = os.getenv('RESPONDER_HOST', '0.0.0.0')\n...\n@app.get('/incidents')\n@app.get('/incidents/{inc_id}')\n@app.get('/incidents/{inc_id}/report', response_class=PlainTextResponse)   # no _authorized() call",
+        "impact": "Anyone who can reach port 8001 on the host network can read incident status, agent final_message, root cause, evidence, file paths and the report. Only POST /alerts checks _authorized. compose says every UI port is 127.0.0.1-only, but the responder is exposed on all interfaces. /healthz also exposes the queue depth. This lets an attacker map the stack and observe agent output, including anything a prompt-injected agent wrote (see M-05).",
+        "recommendation": "Call _authorized() (with the token) on every route, or bind to 127.0.0.1 or the docker bridge gateway IP only (for example 172.17.0.1) instead of 0.0.0.0. Log when the bind is not loopback.",
+        "confidence": "high"
+      },
+      {
+        "id": "M-05",
+        "title": "Agent secret-file protection is an incomplete deny-list; unbounded Read is allowed and model output is stored unredacted",
+        "severity": "medium",
+        "category": "secrets",
+        "file": "incident-response/responder/agents.py",
+        "line": 91,
+        "evidence": "READ_ONLY_TOOLS = [\"Read\", \"Glob\", \"Grep\"]\nDENY = [... \"Read(./.env)\", \"Read(**/.env)\", \"Read(~/.ssh/**)\", \"Read(~/.aws/**)\", \"Read(~/.docker/**)\"]\n...\ncmd = [\"codex\", \"exec\", ..., \"--sandbox\", \"workspace-write\" if mode == \"edit\" else \"read-only\", ...]  # 146-148\nworkdir = self.s.repo   # pipeline.py:189, read_only mode runs in the live repo",
+        "impact": "Bare `Read` is allowed for any path. The deny-list omits ~/.claude/.credentials.json, ~/.config/gh, ~/.npmrc, ~/.git-credentials, ~/.gitconfig and /proc/self/environ, and Codex's read-only sandbox has no read restrictions at all. In read_only mode the agent runs in the live repo, where a real .env holds RESPONDER_TOKEN and the Grafana admin password. A prompt-injected agent can put a secret in final_message, root_cause or an evidence field. Those are written unredacted to response.json, status.json and report.md and served by the unauthenticated GET /incidents (M-04). Redaction is applied only to alert.json and evidence, not to the model output. The capability table admits .env may be readable.",
+        "recommendation": "Run the agent in a dedicated container or user whose filesystem has only the worktree and the evidence directory. Redact agent output with ev.redact before persisting it. Add the missing paths to the deny-list. Use --add-dir semantics rather than bare Read.",
+        "confidence": "medium"
+      },
+      {
+        "id": "M-06",
+        "title": "Alert flooding and budget exhaustion: attacker-chosen fingerprint bypasses dedupe, queue and incident store are unbounded",
+        "severity": "medium",
+        "category": "availability",
+        "file": "incident-response/responder/pipeline.py",
+        "line": 51,
+        "evidence": "def fingerprint(alert): if alert.get('fingerprint'): return str(alert['fingerprint'])\n...\nfor alert in items[:20]:  # server.py:89, 256 KB body cap\n    inc_id, new = r.open_or_attach(alert, payload); if new: _jobs.put(inc_id)\n...\nif self.agent_runs_last_hour() >= budget['max_agent_runs_per_hour']: escalate  # pipeline.py:185",
+        "impact": "A client with the token (or via M-01 from loopback) sends 20 alerts per request, each with a different fingerprint. Each one creates an incident directory, evidence collection with HTTP calls to Prometheus, Loki and Tempo plus docker/git subprocesses, and a queue entry. There is no rate limit and the queue is unbounded. Every intake also calls list_incidents(), which reads every status.json (O(n) under _index_lock), and this gets slower over time. Six fake alerts per hour use up the agent budget, so a genuine outage alert is escalated without analysis. A resolved alert with a known fingerprint (mark_resolved) can also mark real incidents resolved.",
+        "recommendation": "Per-source rate limit and a maximum queue depth. Hash the labels server-side instead of trusting the sender's fingerprint. Cap the total number of open incidents, and verify that the alert corresponds to a live Grafana alert (query the Grafana or Prometheus API) before spending an agent run. Index incidents in memory or SQLite.",
+        "confidence": "high"
+      },
+      {
+        "id": "M-07",
+        "title": "Agent allow-list permits arbitrary-file-write via git diff/log options and un-frozen uv run (network)",
+        "severity": "medium",
+        "category": "excessive-agency",
+        "file": "incident-response/responder/agents.py",
+        "line": 88,
+        "evidence": "\"Bash(uv run --frozen pytest:*)\", \"Bash(uv run pytest:*)\",\n\"Bash(git diff:*)\", \"Bash(git status:*)\", \"Bash(git log:*)\",",
+        "impact": "Prefix patterns with :* allow any arguments. `git diff --output=<path>` and `git log --output=<path>` write to an arbitrary path outside the worktree, for example ~/.bashrc or an authorized_keys file, with attacker-influenced content. `uv run pytest` without --frozen resolves and installs dependencies from the network after the agent has edited pyproject.toml. This contradicts the claim that the model has no network access, and gives code execution through a dependency. `pytest` itself accepts -p, --rootdir and --junitxml=<path> for arbitrary file writes. The DENY list covers none of these.",
+        "recommendation": "Drop `uv run pytest:*` and keep only the exact --frozen form. Enumerate safe subcommands and flags, and deny --output, --ext-diff, --no-index and -c. Prefer running the agent inside a container with a read-only root filesystem and no network.",
+        "confidence": "medium"
+      },
+      {
+        "id": "M-08",
+        "title": "Untrusted telemetry and alert text flows into the agent prompt; OTLP and backends are unauthenticated",
+        "severity": "low",
+        "category": "prompt-injection",
+        "file": "incident-response/responder/pipeline.py",
+        "line": 202,
+        "evidence": "prompt = self.task_template.format(..., alert_json=json.dumps(alert, indent=2)[:4000], summary_md=(inc.root / 'evidence' / 'summary.md').read_text()[:12000])\n# observability/collector.yaml:9-13  otlp grpc 0.0.0.0:4317 / http 0.0.0.0:4318, no auth; compose.yaml:12 publishes 127.0.0.1:4318; loki.yaml:2 auth_enabled: false",
+        "impact": "The template tells the model to treat evidence as data, which is good, but there is no structural isolation. Any local process can push OTLP logs or traces to 127.0.0.1:4318 with service.name=order-tracker, severity ERROR and a crafted exception_message or stack trace. The evidence collector faithfully places these in summary.md, and the prompt then carries the injected instructions, with no source authentication. The redaction regexes cover only secrets and emails, not instructions. The only other untrusted fields are order.id (attacker-chosen in a 404 lookup, but 404 is INFO and not in the ERROR query) and alert annotations (see M-01). Impact is limited by M-02 to M-05 remaining the actual sinks.",
+        "recommendation": "Treat log and trace text as hostile: cap and normalize it, and strip control characters and markdown fences. Ideally add auth (mTLS or a bearer token) on the Collector's OTLP receiver and Loki/Tempo tenant headers. Keep structured fields out of the free-text summary, and consider a non-tool 'summarizer' pass.",
+        "confidence": "medium"
+      },
+      {
+        "id": "M-09",
+        "title": "Default and weak credentials: Grafana admin/admin and fallback responder token",
+        "severity": "low",
+        "category": "authn-authz",
+        "file": "observability/compose.yaml",
+        "line": 67,
+        "evidence": "GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}\n...\nRESPONDER_TOKEN: ${RESPONDER_TOKEN:-change-me-local-only}\n# .env.example:3 RESPONDER_TOKEN=replace-with-a-long-random-string ; :9 GRAFANA_ADMIN_PASSWORD=admin",
+        "impact": "Grafana is bound to 127.0.0.1 only, which limits this, but a DNS-rebinding page or any local user can log in as admin/admin, then change datasources, alert rules and the webhook contact point, or read RESPONDER_TOKEN from the container environment. If RESPONDER_TOKEN is left as the fallback string on both sides, the responder's token is a publicly known constant.",
+        "recommendation": "Fail closed with `${GRAFANA_ADMIN_PASSWORD:?set in .env}` and `${RESPONDER_TOKEN:?set in .env}`. Have the responder reject the placeholder values at startup, and generate the token in setup instructions (openssl rand -hex 32).",
+        "confidence": "high"
+      },
+      {
+        "id": "M-10",
+        "title": "Incident records are not git-ignored: evidence, prompts, and raw agent output can be committed",
+        "severity": "low",
+        "category": "secrets",
+        "file": ".gitignore",
+        "line": 9,
+        "evidence": ".gitignore ends with:\n# incident responder\nincident-response/.worktrees/\nincident-response/.venv/\n# no entry for incident-response/incidents/ ; pipeline.py:316 commit message: Evidence: incident-response/incidents/{inc.id}/",
+        "impact": "Each incident directory holds prompt.md, agent-stdout.json (raw model output with session_id and cost), evidence with stack traces, and absolute host paths such as /home/claude/order-tracker/... in decision.json and run.json. The responder's own `git add -A` runs only in the worktree, so this is not committed automatically. A human `git add -A` on the main repo, or the incidents dir being tracked, would publish them. The current .gitignore gives no protection, and the incident content is not redacted for model output (M-05). I could not run `git ls-files` here to confirm whether any are tracked.",
+        "recommendation": "Add incident-response/incidents/ to .gitignore (or commit only a sanitized report.md through an explicit step). Run a secret scan over any committed incident files before sharing.",
+        "confidence": "medium"
+      },
+      {
+        "id": "M-11",
+        "title": "Unpinned or floating base images and an agent-skill surface inside the Python environment",
+        "severity": "info",
+        "category": "supply-chain",
+        "file": "Dockerfile",
+        "line": 1,
+        "evidence": "FROM python:3.12-slim\nCOPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /uvx /bin/\n# observability/compose.yaml: image: grafana/grafana:12.4.12 etc. (tags, no digests)\n# incident-response/.venv/lib/python3.12/site-packages/fastapi/.agents/skills/fastapi/SKILL.md",
+        "impact": "Tags are mutable, so a registry compromise or a re-tag changes what runs, and `python:3.12-slim` also floats to new patch releases. Python deps are locked (uv.lock, --frozen), which is good. The installed fastapi package ships a third-party agent skill (.agents/skills/fastapi/SKILL.md), which agents such as Codex can discover under .agents/skills when the venv is in scope. The Snyk Agent Scan run covered only agent-mcp.json ('no mcp servers or skills found'), so this skill was not scanned. I reviewed the first 60 lines and saw nothing malicious. The agent CLIs (claude, codex) are unpinned operator installs, with the version recorded per incident.",
+        "recommendation": "Pin images by digest (python@sha256:..., etc.), pin the agent CLI versions, and keep .venv out of any directory the agent can read. Extend the agent-scan to the worktree and venv skill paths.",
+        "confidence": "low"
+      },
+      {
+        "id": "M-12",
+        "title": "Order API has no authentication or rate limits; user-controlled strings reach telemetry",
+        "severity": "info",
+        "category": "pii-in-telemetry",
+        "file": "app/main.py",
+        "line": 178,
+        "evidence": "@app.get('/api/orders')  # returns SELECT * including customer names, no auth\n@app.patch('/api/orders/{order_id}')  # unauthenticated status change\nspan.set_attribute('order.id', order_id)  # line 188: raw client-supplied path segment\nlog(logging.INFO, 'order lookup: not found', {'order.id': order_id})  # line 193",
+        "impact": "The app listens only on 127.0.0.1 in compose, but the container itself listens on 0.0.0.0 and nothing checks the caller, so anyone who reaches it can list customer names and change order status. order.id is written unbounded and unvalidated to Tempo and Loki for 404 lookups, so a client can place an email address, PII or injection text in telemetry. The Collector scrubs `customer` and `user.email` attribute keys but not values inside order.id. Metric labels stay low-cardinality (route template only), which is good, and no bodies, headers or query strings are recorded. traceparent from clients is trusted (propagate.extract, line 124).",
+        "recommendation": "For anything beyond a homework app, add auth, request-size and rate limits. Validate order_id against a UUID/slug regex before it becomes a span or log attribute, or truncate it and hash it for not-found cases. Consider ignoring inbound trace context from untrusted clients.",
+        "confidence": "medium"
+      }
+    ]
+  }
+}

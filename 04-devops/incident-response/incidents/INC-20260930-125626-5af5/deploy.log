@@ -1,0 +1,4 @@
+$ /home/claude/order-tracker/incident-response/runbooks/deploy-fix.sh /home/claude/order-tracker incident/INC-20260930-125626-5af5 inc-20260930-125626-5af5
+refusing: tracked files have uncommitted changes in /home/claude/order-tracker
+
+exit=3

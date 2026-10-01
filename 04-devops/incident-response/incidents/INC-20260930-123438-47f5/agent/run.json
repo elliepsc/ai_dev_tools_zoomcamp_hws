@@ -1,0 +1,13 @@
+{
+  "agent": "fake",
+  "model": null,
+  "mode": "edit",
+  "command": [
+    "fake"
+  ],
+  "returncode": 0,
+  "duration_s": 0.0,
+  "raw_text": "{\"classification\": \"real_incident\", \"summary\": \"DRILL: deliberately ineffective patch to exercise verify-failure and rollback\", \"user_impact\": \"drill\", \"root_cause\": \"drill: the patch below does not address the real cause\", \"evidence\": [{\"source\": \"alert\", \"reference\": \"drill\", \"observation\": \"drill\"}], \"confidence\": 0.9, \"proposed_action\": \"patch\", \"changes\": [{\"file\": \"app/main.py\", \"description\": \"comment only\"}, {\"file\": \"tests/test_drill.py\", \"description\": \"trivial test\"}], \"tests\": {\"ran\": true, \"command\": \"uv run --frozen pytest -q\", \"passed\": true, \"summary\": \"drill\"}, \"verification_requests\": [\"/api/orders/express-1002\"], \"escalation_reason\": null, \"final_message\": \"DRILL: ineffective patch on purpose.\\nVerdict: drill patch proposed.\"}",
+  "stderr_tail": "",
+  "meta": {}
+}

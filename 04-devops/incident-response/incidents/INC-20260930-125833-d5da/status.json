@@ -1,0 +1,18 @@
+{
+  "id": "INC-20260930-125833-d5da",
+  "fingerprint": "5f0e1c2a9b7d4e31",
+  "state": "resolved",
+  "opened_at": "2026-09-30T12:58:33+00:00",
+  "opened_ts": 1790773113.2068348,
+  "alertname": "OrderTracker5xx",
+  "route": "/api/orders/{order_id}",
+  "updated_at": "2026-09-30T12:59:36+00:00",
+  "agent": "claude-code",
+  "agent_started_ts": 1790773113.5874934,
+  "classification": "real_incident",
+  "proposed_action": "patch",
+  "final_message": "INC-20260930-125833-d5da: 500s on /api/orders/{order_id}, from order_detail in app/main.py:81.\nCause: replace(day=day+2) raises ValueError near month end. It hits express orders placed on the 27th or later, such as seeded express-1002.\nFix: use placed_at + timedelta(days=2), plus a regression test. Full suite passes (7), and the new tests fail without the fix.\nReplay after deploy: GET /api/orders/express-1002.\nVerdict: real incident, date-dependent bug in delivery estimate, small patch proposed with confidence 0.95.",
+  "deployed_sha": "c592846",
+  "closed_at": "2026-09-30T12:59:36+00:00",
+  "note": "fix c592846 deployed and verified"
+}

@@ -1,0 +1,17 @@
+diff --git a/app/main.py b/app/main.py
+index aa72191..c8bdc22 100644
+--- a/app/main.py
++++ b/app/main.py
+@@ -1,3 +1,4 @@
++# drill: no-op change
+ import logging
+ import os
+ import sqlite3
+diff --git a/tests/test_drill.py b/tests/test_drill.py
+new file mode 100644
+index 0000000..c17a7b7
+--- /dev/null
++++ b/tests/test_drill.py
+@@ -0,0 +1,2 @@
++def test_drill():
++    assert True

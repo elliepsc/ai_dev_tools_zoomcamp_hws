@@ -1,0 +1,15 @@
+{
+  "id": "INC-20260930-125751-bfcc",
+  "fingerprint": "5f0e1c2a9b7d4e31",
+  "state": "closed",
+  "opened_at": "2026-09-30T12:57:51+00:00",
+  "opened_ts": 1790773071.680846,
+  "alertname": "OrderTracker5xx",
+  "route": "/api/orders/{order_id}",
+  "updated_at": "2026-09-30T12:58:06+00:00",
+  "escalated_at": "2026-09-30T12:57:52+00:00",
+  "escalation_reason": "agent run budget exhausted for this hour; evidence packet attached",
+  "closed_at": "2026-09-30T12:58:06+00:00",
+  "human_disposition": "Budget guard fired as designed (max_agent_runs_per_hour=6, reached by the sandbox re-runs). No agent run and no change. The operator raised the budget for the sandbox session only (RESPONDER_POLICY override) and re-ran.",
+  "closed_by": "claude-sandbox-run"
+}

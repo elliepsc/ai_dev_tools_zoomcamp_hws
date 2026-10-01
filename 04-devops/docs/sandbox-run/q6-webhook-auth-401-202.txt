@@ -1,0 +1,7 @@
+### Q6
+HTTP/1.1 500 Internal Server Error
+HTTP/1.1 500 Internal Server Error
+HTTP/1.1 500 Internal Server Error
+alert query -> [{'metric': {'http_route': '/api/orders/{order_id}'}, 'value': [1790771533.046, '3']}] (> 0 => condition C true => Pending 30s => Firing)
+no token 401 {"detail":"missing or invalid bearer token"}
+with token 202 {"accepted":[{"incident":"INC-20260930-123213-e999","status":"queued"}]}

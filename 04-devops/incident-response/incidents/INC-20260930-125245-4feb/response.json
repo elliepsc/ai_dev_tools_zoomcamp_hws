@@ -1,0 +1,47 @@
+{
+  "classification": "real_incident",
+  "summary": "The alert is a ResponderTest notification (test=\"true\", no route). The evidence packet, however, shows a real, independent bug. GET /api/orders/express-1002 returns 500 (ValueError: day is out of range for month) because order_detail computes the express delivery estimate with placed_at.replace(day=placed_at.day + 2). This fails whenever the order was placed on day 29 or later of a month. Today is Sep 30, and the seeded order is created at \"now\".",
+  "user_impact": "Every request for an express order placed on the 29th, 30th or 31st (Feb: 27th or later) returns HTTP 500. Observed: 6 cumulative 500s on /api/orders/{order_id}, all for express-1002. Standard orders and /healthz are unaffected.",
+  "root_cause": "app/main.py:81 uses placed_at.replace(day=placed_at.day + 2) to estimate delivery. replace() raises ValueError when day+2 exceeds the month length. The fix is placed_at + timedelta(days=2), with timedelta imported from datetime if it isn't already.",
+  "evidence": [
+    {
+      "source": "alert",
+      "reference": "alert labels",
+      "observation": "alertname=ResponderTest, test=true, summary 'Test notification; no incident to fix'; no route in the alert."
+    },
+    {
+      "source": "metrics",
+      "reference": "cumulative_by_status",
+      "observation": "6 x 500 with error_type=ValueError on /api/orders/{order_id}, versus 8 x 200. The 5xx are seen under service_version 8cb2b4f and b26220b, so the bug predates the latest commits."
+    },
+    {
+      "source": "logs",
+      "reference": "Loki ERROR lines 12:48:23 and 12:50:35",
+      "observation": "ValueError: day is out of range for month; traces f876ef66..., c8774e52..., 072f77ac..., 34ee7e04..., 6b350e91..."
+    },
+    {
+      "source": "traces",
+      "reference": "trace c8774e52e877d30a94b5a1cdb55100a7",
+      "observation": "Span orders.build_detail fails with order.priority=express; the root span has order.id=express-1002 and status 500."
+    },
+    {
+      "source": "code",
+      "reference": "app/main.py:81",
+      "observation": "estimated_at = placed_at.replace(day=placed_at.day + 2), which overflows at month end (today is the 30th)."
+    }
+  ],
+  "confidence": 0.9,
+  "proposed_action": "escalate",
+  "changes": [],
+  "tests": {
+    "ran": false,
+    "command": null,
+    "passed": null,
+    "summary": "Read-only run. No tests were run and nothing was edited."
+  },
+  "verification_requests": [
+    "/api/orders/express-1002"
+  ],
+  "escalation_reason": "I cannot edit in read_only mode. The alert is only a test notification, so a human or an edit-mode run should apply the one-line fix at app/main.py:81, replacing replace(day=day+2) with + timedelta(days=2). It also needs a date-independent regression test, for example an express order created on 2026-01-31 or 2026-09-30. Then replay GET /api/orders/express-1002.",
+  "final_message": "The alert is a ResponderTest notification (test=true, no route), but the evidence shows a real, separate bug.\nGET /api/orders/express-1002 returns 500 (ValueError: day is out of range for month). The cause is app/main.py:81, placed_at.replace(day=placed_at.day + 2), which fails for express orders placed on day 29 or later of a month (today is the 30th).\nSuggested fix: use placed_at + timedelta(days=2), and add a date-independent regression test. I made no changes in read-only mode.\nVerdict: test alert, but a real express-order 500 bug is present (app/main.py:81); escalating for a one-line fix."
+}

@@ -1,0 +1,88 @@
+$ /home/claude/order-tracker/incident-response/runbooks/deploy-fix.sh /home/claude/order-tracker incident/INC-20260930-130801-ecb8 inc-20260930-130801-ecb8
+rollback target: order-tracker:rollback-inc-20260930-130801-ecb8 (3982ab3)
+Updating 3982ab3..84e2502
+Fast-forward
+ app/main.py       | 2 +-
+ tests/test_api.py | 5 +++++
+ 2 files changed, 6 insertions(+), 1 deletion(-)
+#1 [internal] load local bake definitions
+#1 reading from stdin 589B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from Dockerfile
+#2 transferring dockerfile: 725B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.0s
+
+#4 [internal] load metadata for ghcr.io/astral-sh/uv:0.8.22
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 100B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 FROM ghcr.io/astral-sh/uv:0.8.22@sha256:87328c5108b79429afd0b9ee8b453991d26c6d4c5486070a413b84e2d6e86ffb
+#7 resolve ghcr.io/astral-sh/uv:0.8.22@sha256:87328c5108b79429afd0b9ee8b453991d26c6d4c5486070a413b84e2d6e86ffb 0.0s done
+#7 DONE 0.0s
+
+#8 [stage-0 1/8] FROM docker.io/library/python:3.12-slim@sha256:2c95c2f92af422478a507910113fcc6e5e9a2b4aebafe5d21d8bfce46101fcf3
+#8 resolve docker.io/library/python:3.12-slim@sha256:2c95c2f92af422478a507910113fcc6e5e9a2b4aebafe5d21d8bfce46101fcf3
+#8 resolve docker.io/library/python:3.12-slim@sha256:2c95c2f92af422478a507910113fcc6e5e9a2b4aebafe5d21d8bfce46101fcf3 0.0s done
+#8 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 8.89kB done
+#6 DONE 0.0s
+
+#9 [stage-0 4/8] COPY pyproject.toml uv.lock ./
+#9 CACHED
+
+#10 [stage-0 2/8] COPY --from=ghcr.io/astral-sh/uv:0.8.22 /uv /uvx /bin/
+#10 CACHED
+
+#11 [stage-0 3/8] WORKDIR /app
+#11 CACHED
+
+#12 [stage-0 5/8] RUN uv sync --frozen --no-dev
+#12 CACHED
+
+#13 [stage-0 6/8] COPY app ./app
+#13 DONE 0.0s
+
+#14 [stage-0 7/8] COPY static ./static
+#14 DONE 0.0s
+
+#15 [stage-0 8/8] RUN useradd --system --uid 10001 --no-create-home app && mkdir -p /data && chown app /data
+#15 0.066 useradd warning: app's uid 10001 is greater than SYS_UID_MAX 999
+#15 DONE 0.1s
+
+#16 exporting to image
+#16 exporting layers 0.1s done
+#16 exporting manifest sha256:161654256bb1412bb42440cb2b1eeb21e4f2b670a60b69d73f2a8a0306f8f458 done
+#16 exporting config sha256:0949037ad6f9e2ea39f3abf8fcfbfecb628f4b21c27accd847fb8e93d67a10f1 done
+#16 exporting attestation manifest sha256:858a7203c7a25d1c1fd067ef140271fe078c011888f94fe0fd1636a5470b8178 done
+#16 exporting manifest list sha256:816916dcd712e24686f138907b089560e580244b423f69a857a1930e4f93b904 done
+#16 naming to docker.io/library/order-tracker:local
+#16 naming to docker.io/library/order-tracker:local done
+#16 unpacking to docker.io/library/order-tracker:local 0.0s done
+#16 DONE 0.1s
+
+#17 resolving provenance for metadata file
+#17 DONE 0.0s
+deployed 84e2502
+order-tracker:rollback-inc-20260930-130801-ecb8
+ Image order-tracker:local Building 
+ Image order-tracker:local Built 
+ Container order-tracker-app-1 Recreate 
+ Container order-tracker-app-1 Recreated 
+ Container order-tracker-app-1 Starting 
+ Container order-tracker-app-1 Started 
+ Container order-tracker-app-1 Waiting 
+ Container order-tracker-app-1 Healthy 
+
+exit=0

@@ -1,0 +1,41 @@
+{
+  "alert": {
+    "status": "firing",
+    "labels": {
+      "alertname": "OrderTracker5xx",
+      "drill": "rollback",
+      "grafana_folder": "Order Tracker Alerts",
+      "http_route": "/api/orders/{order_id}",
+      "service": "order-tracker",
+      "severity": "critical",
+      "team": "ops"
+    },
+    "annotations": {
+      "summary": "Server errors (5xx) on /api/orders/{order_id}",
+      "description": "3 5xx response(s) on route /api/orders/{order_id} of service order-tracker over the last 5 minutes.",
+      "endpoint": "/api/orders/{order_id}",
+      "window": "5m",
+      "dashboard_url": "http://localhost:3000/d/order-tracker/order-tracker",
+      "runbook_url": "incident-response/responder-task.md"
+    },
+    "startsAt": "2026-09-30T12:32:13Z",
+    "endsAt": "0001-01-01T00:00:00Z",
+    "generatorURL": "http://localhost:3000/alerting/grafana/order-tracker-5xx/view?orgId=1",
+    "fingerprint": "d2111a1ed2111a1e",
+    "dashboardURL": "http://localhost:3000/d/order-tracker?orgId=1",
+    "panelURL": "http://localhost:3000/d/order-tracker?orgId=1&viewPanel=3",
+    "values": {
+      "A": 3,
+      "B": 3,
+      "C": 1
+    },
+    "valueString": "[ var='B' labels={http_route=/api/orders/{order_id}} value=3 ]"
+  },
+  "group": {
+    "receiver": "incident-responder",
+    "status": "firing",
+    "groupKey": "{}/{}:{alertname=\"OrderTracker5xx\", http_route=\"/api/orders/{order_id}\"}",
+    "externalURL": "http://localhost:3000/",
+    "title": "[FIRING:1] OrderTracker5xx Order Tracker Alerts (/api/orders/{order_id} order-tracker critical ops)"
+  }
+}

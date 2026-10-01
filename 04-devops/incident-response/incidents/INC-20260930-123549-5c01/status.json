@@ -1,0 +1,17 @@
+{
+  "id": "INC-20260930-123549-5c01",
+  "fingerprint": "d2222a2ed2222a2e",
+  "state": "escalated",
+  "opened_at": "2026-09-30T12:35:49+00:00",
+  "opened_ts": 1790771749.7185783,
+  "alertname": "OrderTracker5xx",
+  "route": "/api/orders/{order_id}",
+  "updated_at": "2026-09-30T12:35:52+00:00",
+  "agent": "fake",
+  "agent_started_ts": 1790771750.0828748,
+  "classification": "real_incident",
+  "proposed_action": "patch",
+  "final_message": "DRILL: ineffective patch on purpose.\nVerdict: drill patch proposed.",
+  "escalated_at": "2026-09-30T12:35:52+00:00",
+  "escalation_reason": "patch rejected by policy: regression_test_fails_without_fix (suite without the code change failed = False)"
+}

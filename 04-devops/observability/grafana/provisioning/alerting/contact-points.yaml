@@ -1,0 +1,17 @@
+apiVersion: 1
+
+# Grafana -> incident responder (runs on the host, port 8001).
+# RESPONDER_URL / RESPONDER_TOKEN come from the grafana container environment.
+contactPoints:
+  - orgId: 1
+    name: incident-responder
+    receivers:
+      - uid: incident-responder-webhook
+        type: webhook
+        disableResolveMessage: false
+        settings:
+          url: ${RESPONDER_URL}
+          httpMethod: POST
+          authorization_scheme: Bearer
+          authorization_credentials: ${RESPONDER_TOKEN}
+          maxAlerts: 10

@@ -1,0 +1,95 @@
+{
+  "level": 2,
+  "level_name": "remediate",
+  "level_reason": "default level",
+  "proposed_action": "patch",
+  "executed": [
+    {
+      "runbook": "deploy-fix.sh",
+      "command": [
+        "/home/claude/order-tracker/incident-response/runbooks/deploy-fix.sh",
+        "/home/claude/order-tracker",
+        "incident/INC-20260930-125833-d5da",
+        "inc-20260930-125833-d5da"
+      ],
+      "rc": 0
+    },
+    {
+      "runbook": "verify-recovery.sh",
+      "command": [
+        "/home/claude/order-tracker/incident-response/runbooks/verify-recovery.sh",
+        "/api/orders/{order_id}",
+        "/api/orders/express-1002"
+      ],
+      "rc": 0
+    }
+  ],
+  "checks": [
+    {
+      "check": "classification",
+      "ok": true,
+      "detail": "agent classification = real_incident"
+    },
+    {
+      "check": "proposed_action",
+      "ok": true,
+      "detail": "agent proposed patch"
+    },
+    {
+      "check": "confidence",
+      "ok": true,
+      "detail": "0.95 >= 0.7"
+    },
+    {
+      "check": "diff_not_empty",
+      "ok": true,
+      "detail": "2 file(s) changed"
+    },
+    {
+      "check": "paths_allowlisted",
+      "ok": true,
+      "detail": "all paths allowlisted"
+    },
+    {
+      "check": "max_files",
+      "ok": true,
+      "detail": "2 <= 4"
+    },
+    {
+      "check": "max_lines",
+      "ok": true,
+      "detail": "11 <= 80"
+    },
+    {
+      "check": "regression_test",
+      "ok": true,
+      "detail": "a test file changed"
+    },
+    {
+      "check": "tests_pass_rerun_by_responder",
+      "ok": true,
+      "detail": "responder test run passed = True"
+    },
+    {
+      "check": "regression_test_fails_without_fix",
+      "ok": true,
+      "detail": "suite without the code change failed = True"
+    },
+    {
+      "check": "action_patch_allowed_at_level",
+      "ok": true,
+      "detail": "level 2"
+    }
+  ],
+  "diff": {
+    "files": [
+      "app/main.py",
+      "tests/test_api.py"
+    ],
+    "added": 10,
+    "deleted": 1
+  },
+  "allowed": true,
+  "deploy_allowed_at_level": true,
+  "outcome": "fixed_and_verified"
+}

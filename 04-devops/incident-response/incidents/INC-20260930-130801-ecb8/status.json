@@ -1,0 +1,18 @@
+{
+  "id": "INC-20260930-130801-ecb8",
+  "fingerprint": "11605c0772a6d2ba",
+  "state": "resolved",
+  "opened_at": "2026-09-30T13:08:01+00:00",
+  "opened_ts": 1790773681.265074,
+  "alertname": "OrderTracker5xx",
+  "route": "/api/orders/{order_id}",
+  "updated_at": "2026-09-30T13:09:00+00:00",
+  "agent": "claude-code",
+  "agent_started_ts": 1790773681.6548378,
+  "classification": "real_incident",
+  "proposed_action": "patch",
+  "final_message": "INC-20260930-130801-ecb8: 5xx on /api/orders/{order_id} (GET /api/orders/express-1002).\nCause: order_detail used replace(day=day+2) for the express ETA, which raises ValueError for orders placed on day 29-31 of a month.\nFix: use placed_at + timedelta(days=2), plus a date-independent regression test. The suite passes (6 tests).\nVerdict: real incident, small local patch proposed, replay /api/orders/express-1002 after deploy.",
+  "deployed_sha": "84e2502",
+  "closed_at": "2026-09-30T13:09:00+00:00",
+  "note": "fix 84e2502 deployed and verified"
+}

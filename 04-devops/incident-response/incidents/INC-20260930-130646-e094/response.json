@@ -1,0 +1,56 @@
+{
+  "classification": "real_incident",
+  "summary": "GET /api/orders/express-1002 returns 500 (ValueError: day is out of range for month). order_detail() computes the express delivery estimate with placed_at.replace(day=placed_at.day + 2), which fails when the order date is within 2 days of month end. The seeded order express-1002 is dated the last day of the previous month (Aug 31 here, so day 33).",
+  "user_impact": "Every detail lookup of an express order created on the 30th or 31st, or on Feb 27-28 and so on, returns HTTP 500. In the evidence that is express-1002, with about 12 500s in 15 minutes. Standard orders and the 200 responses are unaffected.",
+  "root_cause": "app/main.py:81 uses date.replace(day=day+2) for the delivery estimate instead of date arithmetic. It raises ValueError for any express order whose created_at day is greater than (days in month - 2). The seed data (init_db) deliberately creates express-1002 at the previous month end, which triggers it.",
+  "evidence": [
+    {
+      "source": "logs",
+      "reference": "Loki error logs, trace b3141cbefdc4a6c76956dc4ad7f9b79f",
+      "observation": "19 ERROR lines on the route, all ValueError: day is out of range for month; stack ends at main.py:81 in order_detail."
+    },
+    {
+      "source": "traces",
+      "reference": "Tempo trace 220cc9ab9c479bfc0547d8048476458b",
+      "observation": "The span orders.build_detail errors with order.priority=express; order.id=express-1002 on the root span; the db select succeeded."
+    },
+    {
+      "source": "metrics",
+      "reference": "five_xx_last_5m / cumulative_by_status",
+      "observation": "All 5xx are error_type=ValueError on version 3982ab3; 12.6 500s vs 1.0 200s over 15m."
+    },
+    {
+      "source": "code",
+      "reference": "app/main.py:81 and 61",
+      "observation": "placed_at.replace(day=placed_at.day + 2); the seed sets express-1002 created_at to the previous month end."
+    },
+    {
+      "source": "code",
+      "reference": "tests/test_api.py::test_express_estimate_crosses_month_end",
+      "observation": "New regression test with a fixed date (2026-08-31) expects 2026-09-02; full suite passes, 6 passed."
+    }
+  ],
+  "confidence": 0.96,
+  "proposed_action": "patch",
+  "changes": [
+    {
+      "file": "app/main.py",
+      "description": "order_detail: estimated_at = placed_at + timedelta(days=2) instead of replace(day=day+2); timedelta was already imported."
+    },
+    {
+      "file": "tests/test_api.py",
+      "description": "Added test_express_estimate_crosses_month_end, which uses a fixed 2026-08-31 date so it does not depend on today's date. It calls order_detail directly."
+    }
+  ],
+  "tests": {
+    "ran": true,
+    "command": "uv run --frozen pytest -q",
+    "passed": true,
+    "summary": "6 passed with the fix. I did not run the new test against the unfixed code: the sandbox blocked the revert command. By inspection it fails, because day 31 + 2 = 33 raises ValueError."
+  },
+  "verification_requests": [
+    "/api/orders/express-1002"
+  ],
+  "escalation_reason": null,
+  "final_message": "INC-20260930-130646-e094: GET /api/orders/express-1002 returns 500 (ValueError: day is out of range for month).\nCause: app/main.py:81 computes the delivery estimate with replace(day=day+2), which breaks near month end. The seeded express-1002 is dated Aug 31.\nFix: use placed_at + timedelta(days=2), plus a regression test with a fixed date. Full suite passes (6 tests).\nVerdict: real incident, one-line patch proposed, please deploy and replay /api/orders/express-1002."
+}
