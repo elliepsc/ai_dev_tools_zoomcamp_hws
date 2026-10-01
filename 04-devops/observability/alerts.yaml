@@ -1,0 +1,71 @@
+# Grafana-managed alert: user-facing server errors on Order Tracker.
+# Mounted into Grafana as file provisioning (observability/grafana/provisioning/alerting/).
+#
+# Why this expression (and not just increase(...[5m])):
+#   the first 5xx for a route creates a brand-new counter series whose first sample is
+#   already 1. increase() needs two samples, so it returns 0 and a single failing request
+#   would never page. "(X unless X offset 5m)" counts series born inside the window,
+#   "or increase(X[5m])" counts the ones that already existed.
+# No-data (no 5xx series at all, the normal state) is mapped to OK, not to an alert.
+# Templates avoid the "$labels" shorthand: Grafana expands $VARS in provisioning files.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: order-tracker-user-impact
+    folder: Order Tracker Alerts
+    interval: 10s
+    rules:
+      - uid: order-tracker-5xx
+        title: OrderTracker5xx
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: prometheus
+            model:
+              refId: A
+              editorMode: code
+              instant: true
+              range: false
+              legendFormat: "{{http_route}}"
+              expr: >-
+                sum by (http_route) (
+                  (app_http_requests_total{job="order-tracker", http_response_status_code=~"5.."}
+                    unless app_http_requests_total{job="order-tracker", http_response_status_code=~"5.."} offset 5m)
+                  or increase(app_http_requests_total{job="order-tracker", http_response_status_code=~"5.."}[5m])
+                )
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+              settings: { mode: dropNN }
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator: { type: gt, params: [0] }
+        noDataState: OK          # no 5xx at all -> Normal
+        execErrState: Error      # a broken query must be visible, never silently OK
+        for: 30s                 # 3 evaluations; the 5m window already smooths spikes
+        isPaused: false
+        labels:
+          severity: critical
+          service: order-tracker
+          team: ops
+        annotations:
+          summary: 'Server errors (5xx) on {{ index .Labels "http_route" }}'
+          description: '{{ .Values.B }} 5xx response(s) on route {{ index .Labels "http_route" }} of service order-tracker over the last 5 minutes.'
+          endpoint: '{{ index .Labels "http_route" }}'
+          window: 5m
+          query: 'app_http_requests_total{http_route="{{ index .Labels "http_route" }}", http_response_status_code=~"5.."}'
+          dashboard_url: http://localhost:3000/d/order-tracker/order-tracker
+          runbook_url: incident-response/responder-task.md
+          __dashboardUid__: order-tracker
+          __panelId__: "3"

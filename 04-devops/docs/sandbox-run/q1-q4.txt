@@ -1,0 +1,14 @@
+### Q1
+ Container order-tracker-app-1 Healthy 
+{"status":"ok"}
+### Q2
+ Container order-tracker-app-1 Healthy 
+HTTP/1.1 200 OK
+### Q3
+ Container order-tracker-app-1 Healthy 
+HTTP/1.1 404 Not Found
+prometheus: app_http_requests_total route= /api/orders/{order_id} status= 404 version= 8cb2b4f value= 1
+loki: GET /api/orders/{order_id} -> 404 trace_id= 518f3e5935c8430a70eeea7a996f4d5b
+tempo: 518f3e5935c8430a70eeea7a996f4d5b GET /api/orders/{order_id}
+### Q4
+alert query (from alerts.yaml) result: [] => NoData => noDataState OK => Normal

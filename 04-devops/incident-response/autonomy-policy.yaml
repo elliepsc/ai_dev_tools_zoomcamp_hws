@@ -1,0 +1,73 @@
+# Autonomy policy for the incident responder.
+#
+# The model proposes; this file (enforced by responder/policy.py, not by the model)
+# decides what may actually happen. The model never receives Docker, git-push,
+# network or production credentials: every side effect below is executed by the
+# responder itself through an allowlisted runbook, after its own checks.
+version: 1
+
+# 0 = observe   : collect evidence, ask the agent for a diagnosis, write a report. No change.
+# 1 = propose   : the agent may edit code in an isolated git worktree branch; nothing is deployed.
+# 2 = remediate : the responder may run allowlisted runbooks (deploy-fix, rollback) and must verify.
+# Homework default is 2 so Question 6 can close the loop; use 1 anywhere that matters.
+default_level: 2
+
+levels:
+  0: observe
+  1: propose
+  2: remediate
+
+# First match wins. Lowering is always allowed; nothing here can raise above default_level.
+overrides:
+  - match: { labels: { test: "true" } }
+    level: 0
+    reason: test notification, never touch code or runtime
+  - match: { labels: { severity: info } }
+    level: 0
+    reason: informational alert
+
+actions:
+  none:     { min_level: 0 }
+  escalate: { min_level: 0 }
+  patch:    { min_level: 1 }                                   # edit in worktree only
+  deploy:   { min_level: 2, runbook: runbooks/deploy-fix.sh }  # merge + rebuild the app
+  rollback: { min_level: 2, runbook: runbooks/rollback.sh }    # previous image, no rebuild
+
+# Guards checked by the responder on the real diff and a real test run, never on the
+# agent's own claims.
+guards:
+  min_confidence: 0.7
+  allowed_paths: ["app/**", "tests/**"]
+  forbidden_paths:
+    - "Dockerfile"
+    - "compose.yaml"
+    - "pyproject.toml"
+    - "uv.lock"
+    - "observability/**"
+    - "incident-response/**"
+    - ".github/**"
+  max_files_changed: 4
+  max_changed_lines: 80
+  require_tests_pass: true            # the responder re-runs the suite itself
+  require_regression_test: true       # at least one file under tests/ must change
+  require_fail_before_fix: true       # ...and the suite must FAIL when the code change is removed
+  test_command: ["uv", "run", "--frozen", "pytest", "-q"]
+
+# What the agent process may have loaded, as reported by the CLI itself at start-up.
+# agent-mcp.json declares "nothing"; this checks that the runtime agrees before any deploy.
+extension_surface:
+  require_known: false        # Codex does not report its surface; Claude does and is always checked
+  allowed_mcp_servers: []
+  allowed_plugins: []
+  max_skills: 0
+
+verification:
+  attempts_per_request: 3
+  settle_seconds: 12                  # > metric export interval, to read the counter after
+  max_new_5xx: 0
+
+budget:
+  max_agent_runs_per_hour: 6          # loop / cost guard
+  agent_timeout_seconds: 900
+  agent_max_turns: 40
+  dedupe_window_minutes: 30           # same fingerprint -> same incident, no new run

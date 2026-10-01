@@ -1,0 +1,49 @@
+### Q6 (definitive, final code, sandbox surface override)
+HTTP/1.1 500 Internal Server Error
+HTTP/1.1 500 Internal Server Error
+HTTP/1.1 500 Internal Server Error
+alert query -> [{'metric': {'http_route': '/api/orders/{order_id}'}, 'value': [1790773680.789, '7']}]
+webhook -> 202 {"accepted":[{"incident":"INC-20260930-130801-ecb8","status":"queued"}]}
+state=resolved incident=INC-20260930-130801-ecb8
+2026-09-30 15:08:01,265 INFO responder [INC-20260930-130801-ecb8] incident_opened {"fingerprint": "11605c0772a6d2ba", "alertname": "OrderTracker5xx"}
+2026-09-30 15:08:01,613 INFO responder [INC-20260930-130801-ecb8] evidence_collected {"route": "/api/orders/{order_id}", "logs": 20, "traces": 5, "samples": ["/api/orders/express-1002"]}
+2026-09-30 15:08:01,613 INFO responder [INC-20260930-130801-ecb8] autonomy_level {"level": 2, "name": "remediate", "reason": "default level", "agent_mode": "edit"}
+2026-09-30 15:08:01,652 INFO responder [INC-20260930-130801-ecb8] worktree_created {"branch": "incident/INC-20260930-130801-ecb8", "rc": 0, "out": "HEAD is now at 3982ab3 Responder: disable skills/user settings for Claude, gate deploys on the agent's EFFECTIVE
+2026-09-30 15:08:01,665 INFO responder [INC-20260930-130801-ecb8] agent_started {"agent": "claude-code", "version": "2.1.285 (Claude Code)", "model": "cli default", "mode": "edit", "cwd": "/home/claude/order-tracker/incident-response/.worktrees/INC-20260930-13
+2026-09-30 15:08:27,689 INFO responder [INC-20260930-130801-ecb8] agent_finished {"rc": 0, "duration_s": 26.0, "meta": {"total_cost_usd": 0.16181859999999998, "num_turns": 12, "duration_ms": 24822, "is_error": false, "subtype": "success", "stop_reason": "tool_
+2026-09-30 15:08:27,698 INFO responder [INC-20260930-130801-ecb8] agent final message:
+2026-09-30 15:08:28,612 INFO responder [INC-20260930-130801-ecb8] responder_test_run {"command": ["uv", "run", "--frozen", "pytest", "-q"], "rc": 0, "tail": ["6 passed, 1 warning in 0.46s"]}
+2026-09-30 15:08:29,579 INFO responder [INC-20260930-130801-ecb8] fail_before_fix_check {"rc": 1, "fails_before": true}
+2026-09-30 15:08:29,579 INFO responder [INC-20260930-130801-ecb8] policy_decision {"allowed": true, "deploy_allowed": true, "failed": []}
+2026-09-30 15:08:29,701 INFO responder [INC-20260930-130801-ecb8] fix_committed {"branch": "incident/INC-20260930-130801-ecb8", "sha": "84e2502", "rc": 0}
+2026-09-30 15:08:29,769 INFO responder [INC-20260930-130801-ecb8] worktree_removed {"branch": "incident/INC-20260930-130801-ecb8", "branch_kept": true}
+2026-09-30 15:08:36,759 INFO responder [INC-20260930-130801-ecb8] runbook_deploy_fix {"rc": 0, "tail": [" Container order-tracker-app-1 Waiting ", " Container order-tracker-app-1 Healthy"]}
+2026-09-30 15:09:00,855 INFO responder [INC-20260930-130801-ecb8] verify_recovery {"rc": 0, "summary": ["{\"recovered\": true, \"healthz\": \"200\", \"five_xx_before\": \"7\", \"five_xx_after\": \"7\", \"replayed\": \"/api/orders/express-1002=200 /api/orders/e
+2026-09-30 15:09:00,856 INFO responder [INC-20260930-130801-ecb8] incident_closed {"state": "resolved", "note": "fix 84e2502 deployed and verified"}
+-        estimated_at = placed_at.replace(day=placed_at.day + 2)
++        estimated_at = placed_at + timedelta(days=2)
++def test_express_estimate_crosses_month_end():
++    row = {"id": "x", "priority": "express", "created_at": "2026-01-31T10:00:00+00:00"}
++    assert main.order_detail(row)["estimated_delivery"] == "2026-02-02"
+--- final_message
+INC-20260930-130801-ecb8: 5xx on /api/orders/{order_id} (GET /api/orders/express-1002).
+Cause: order_detail used replace(day=day+2) for the express ETA, which raises ValueError for orders placed on day 29-31 of a month.
+Fix: use placed_at + timedelta(days=2), plus a date-independent regression test. The suite passes (6 tests).
+Verdict: real incident, small local patch proposed, replay /api/orders/express-1002 after deploy.
+PASS classification agent classification = real_incident
+PASS proposed_action agent proposed patch
+PASS confidence 0.95 >= 0.7
+PASS diff_not_empty 2 file(s) changed
+PASS paths_allowlisted all paths allowlisted
+PASS max_files 2 <= 4
+PASS max_lines 7 <= 80
+PASS regression_test a test file changed
+PASS tests_pass_rerun_by_responder responder test run passed = True
+PASS regression_test_fails_without_fix suite without the code change failed = True
+PASS action_patch_allowed_at_level level 2
+PASS agent_extension_surface_as_declared effective surface matches the declared one
+--- manual check
+HTTP/1.1 200 OK
+{"id":"express-1002","customer":"Sam","item":"Headphones","priority":"express","status":"preparing","created_at":"2026-08-31T12:53:33.846563+00:00","estimated_delivery":"2026-09-02"}
+84e2502 fix(INC-20260930-130801-ecb8): GET /api/orders/express-1002 returns 500 (ValueError: day is out of rang
+3982ab3 Responder: disable skills/user settings for Claude, gate deploys on the agent's EFFECTIVE extension surface

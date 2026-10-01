@@ -1,0 +1,10 @@
+{
+  "level": 0,
+  "level_name": "observe",
+  "level_reason": "test notification, never touch code or runtime",
+  "proposed_action": "none",
+  "executed": [],
+  "checks": [],
+  "allowed": true,
+  "outcome": "no_change"
+}

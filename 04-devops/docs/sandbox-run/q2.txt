@@ -1,0 +1,4 @@
+### Q2 (re-check)
+ Container order-tracker-app-1 Healthy 
+HTTP/1.1 200 OK
+console metric app.http.requests: route=/api/orders/{order_id} http.response.status_code = 200

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "IncidentResponderResponse",
+  "description": "Structured answer every agent (Claude Code, Codex, ...) must return. Strict: all fields required, nulls explicit, no extra keys, so the policy engine never parses free text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "classification",
+    "summary",
+    "user_impact",
+    "root_cause",
+    "evidence",
+    "confidence",
+    "proposed_action",
+    "changes",
+    "tests",
+    "verification_requests",
+    "escalation_reason",
+    "final_message"
+  ],
+  "properties": {
+    "classification": {
+      "type": "string",
+      "enum": ["test_notification", "real_incident", "false_positive", "insufficient_evidence"]
+    },
+    "summary": { "type": "string", "maxLength": 1200 },
+    "user_impact": { "type": "string", "maxLength": 600 },
+    "root_cause": { "type": ["string", "null"], "maxLength": 1500 },
+    "evidence": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source", "reference", "observation"],
+        "properties": {
+          "source": { "type": "string", "enum": ["alert", "metrics", "logs", "traces", "code", "deploy"] },
+          "reference": { "type": "string", "maxLength": 300 },
+          "observation": { "type": "string", "maxLength": 600 }
+        }
+      }
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "proposed_action": { "type": "string", "enum": ["none", "patch", "rollback", "escalate"] },
+    "changes": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "description"],
+        "properties": {
+          "file": { "type": "string", "maxLength": 200 },
+          "description": { "type": "string", "maxLength": 500 }
+        }
+      }
+    },
+    "tests": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ran", "command", "passed", "summary"],
+      "properties": {
+        "ran": { "type": "boolean" },
+        "command": { "type": ["string", "null"], "maxLength": 200 },
+        "passed": { "type": ["boolean", "null"] },
+        "summary": { "type": "string", "maxLength": 600 }
+      }
+    },
+    "verification_requests": {
+      "description": "GET paths on the app that failed before and must not fail after the fix, e.g. /api/orders/express-1002",
+      "type": "array",
+      "maxItems": 5,
+      "items": { "type": "string", "maxLength": 200 }
+    },
+    "escalation_reason": { "type": ["string", "null"], "maxLength": 800 },
+    "final_message": {
+      "description": "Message for the on-call channel. Its last line is the one-line verdict.",
+      "type": "string",
+      "maxLength": 1500
+    }
+  }
+}

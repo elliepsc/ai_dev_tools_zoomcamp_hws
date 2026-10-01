@@ -1,0 +1,5 @@
+{"ts": "2026-09-30T12:57:51+00:00", "step": "incident_opened", "fingerprint": "5f0e1c2a9b7d4e31", "alertname": "OrderTracker5xx"}
+{"ts": "2026-09-30T12:57:52+00:00", "step": "evidence_collected", "route": "/api/orders/{order_id}", "logs": 11, "traces": 5, "samples": ["/api/orders/express-1002"]}
+{"ts": "2026-09-30T12:57:52+00:00", "step": "autonomy_level", "level": 2, "name": "remediate", "reason": "default level", "agent_mode": "edit"}
+{"ts": "2026-09-30T12:57:52+00:00", "step": "escalated", "reason": "agent run budget exhausted for this hour; evidence packet attached"}
+{"ts": "2026-09-30T12:58:06+00:00", "step": "human_disposition", "by": "claude-sandbox-run", "disposition": "Budget guard fired as designed (max_agent_runs_per_hour=6, reached by the sandbox re-runs). No agent run and no change. The operator raised the budget for the sandbox session only (RESPONDER_POLICY override) and re-ran."}

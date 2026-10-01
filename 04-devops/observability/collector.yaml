@@ -1,0 +1,65 @@
+# OpenTelemetry Collector: single entry point for all app telemetry.
+# The app only knows "otel-collector:4318"; backends can change without touching it.
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 256
+    spike_limit_mib: 64
+  # Defense in depth: even if a developer adds them by mistake, these never leave the Collector.
+  attributes/scrub:
+    actions:
+      - { key: http.request.header.authorization, action: delete }
+      - { key: http.request.header.cookie, action: delete }
+      - { key: http.request.body, action: delete }
+      - { key: customer, action: delete }
+      - { key: customer.name, action: delete }
+      - { key: user.email, action: delete }
+      - { key: url.query, action: delete }
+  batch:
+    timeout: 2s
+
+exporters:
+  # Prometheus native OTLP endpoint (needs --web.enable-otlp-receiver).
+  otlp_http/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+    tls:
+      insecure: true
+  # Loki native OTLP endpoint; resource attrs like service.name become labels.
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+  otlp_grpc/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+  debug:
+    verbosity: basic
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp_http/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp_http/loki]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp_grpc/tempo]

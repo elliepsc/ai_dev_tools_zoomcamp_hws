@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: order-tracker
+    folder: Order Tracker
+    type: file
+    disableDeletion: true
+    allowUiUpdates: false        # the JSON in git is the source of truth
+    options:
+      path: /etc/grafana/dashboards

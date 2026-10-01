@@ -1,0 +1,9 @@
+$ /home/claude/order-tracker/incident-response/runbooks/verify-recovery.sh /api/orders/{order_id} /api/orders/express-1002
+healthz -> 200
+GET /api/orders/express-1002 -> 200
+GET /api/orders/express-1002 -> 200
+GET /api/orders/express-1002 -> 200
+5xx counter for /api/orders/{order_id}: before=7 after=7
+{"recovered": true, "healthz": "200", "five_xx_before": "7", "five_xx_after": "7", "replayed": "/api/orders/express-1002=200 /api/orders/express-1002=200 /api/orders/express-1002=200"}
+
+exit=0

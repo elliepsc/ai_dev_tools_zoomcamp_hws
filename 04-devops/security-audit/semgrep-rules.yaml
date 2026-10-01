@@ -1,0 +1,42 @@
+# Project-specific Semgrep rules: the risks that matter for THIS repo.
+rules:
+  - id: otel-attribute-may-carry-pii
+    languages: [python]
+    severity: WARNING
+    message: >-
+      Customer data (customer/item) flows into a telemetry attribute or log. Telemetry is
+      retained, replicated and handed to the incident agent: keep it out.
+    patterns:
+      - pattern-either:
+          - pattern: '$SPAN.set_attribute($K, <... $ORDER.customer ...>)'
+          - pattern: '$SPAN.set_attribute($K, <... $ROW["customer"] ...>)'
+          - pattern: 'log($LVL, $MSG, {..., $K: <... $ROW["customer"] ...>, ...})'
+          - pattern: 'log($LVL, $MSG, {..., $K: <... $ORDER.customer ...>, ...})'
+  - id: subprocess-shell-true
+    languages: [python]
+    severity: ERROR
+    message: subprocess with shell=True in the responder turns alert/model text into shell code.
+    pattern: 'subprocess.$F(..., shell=True, ...)'
+  - id: yaml-unsafe-load
+    languages: [python]
+    severity: ERROR
+    message: yaml.load without SafeLoader executes arbitrary tags; use yaml.safe_load.
+    patterns:
+      - pattern: yaml.load(...)
+      - pattern-not: yaml.load(..., Loader=yaml.SafeLoader)
+  - id: agent-cli-dangerous-flag
+    languages: [python]
+    severity: ERROR
+    message: >-
+      The responder must never start an agent with permission bypass / full-access flags.
+    pattern-either:
+      - pattern: '"--dangerously-skip-permissions"'
+      - pattern: '"--dangerously-bypass-approvals-and-sandbox"'
+      - pattern: '"danger-full-access"'
+      - pattern: '"bypassPermissions"'
+  - id: responder-token-compared-with-eq
+    languages: [python]
+    severity: WARNING
+    message: Compare secrets with hmac.compare_digest to avoid timing leaks.
+    patterns:
+      - pattern: '$A == f"Bearer {$T}"'

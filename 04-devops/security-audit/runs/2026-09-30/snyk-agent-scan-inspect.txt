@@ -1,0 +1,3 @@
+Snyk Agent Scan v0.6.8
+
+● Scanning incident-response/agent-mcp.json no mcp servers or skills found

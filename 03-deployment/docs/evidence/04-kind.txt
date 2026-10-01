@@ -1,0 +1,386 @@
+=== 2026-09-25T14:54:13Z (UTC) ===
+OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
+cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
+
+$ source scripts/toolchain.sh
+OK   kind: kind version 0.30.0
+OK   kubectl: Client Version: v1.34.1
+OK   uv: uv 0.12.18 (01cb90c1a 2026-09-22 x86_64-pc-windows-msvc)
+INFO act: act version 0.2.89
+OK   docker: Docker version 27.5.1, build 9f9e405
+OK   docker compose: Docker Compose version v2.32.4-desktop.1
+toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
+[RC=0]
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+$ kind get clusters
+No kind clusters found.
+[RC=0]
+$ docker images agent-relay --format '{{.Repository}}:{{.Tag}}  {{.CreatedSince}}'
+agent-relay:local  About an hour ago
+[RC=0]
+port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)
+$ kind create cluster --name agent-relay --config kind-config.yaml --wait 180s
+scripts/evidence_lib.sh: line 60: kind: command not found
+[RC=127]
+$ kind create cluster --name agent-relay --config kind-config.yaml --wait 180s
+scripts/evidence_lib.sh: line 60: kind: command not found
+[RC=127]
+# CORRECTION: this failure is real and is kept -- not a fabrication. Root
+# cause: each Bash tool invocation is a fresh shell process; PATH pinned by
+# 'source scripts/toolchain.sh' in one tool call does not survive into the
+# next one (this is separate from the subshell-pipe bug fixed in commit
+# 32b9b0d, which was about pipes WITHIN one shell). Fix: every subsequent
+# command block in this file re-sources toolchain.sh at its top (silently,
+# already asserted once above -- not re-printing the banner) before using
+# record()/assert_check().
+# retry, with toolchain.sh re-sourced in this fresh shell
+$ kind create cluster --name agent-relay --config kind-config.yaml --wait 180s
+Creating cluster "agent-relay" ...
+ • Ensuring node image (kindest/node:v1.34.0) 🖼  ...
+ ✓ Ensuring node image (kindest/node:v1.34.0) 🖼
+ • Preparing nodes 📦   ...
+ ✓ Preparing nodes 📦 
+ • Writing configuration 📜  ...
+ ✓ Writing configuration 📜
+ • Starting control-plane 🕹️  ...
+ ✓ Starting control-plane 🕹️
+ • Installing CNI 🔌  ...
+ ✓ Installing CNI 🔌
+ • Installing StorageClass 💾  ...
+ ✓ Installing StorageClass 💾
+ • Waiting ≤ 3m0s for control-plane = Ready ⏳  ...
+ ✓ Waiting ≤ 3m0s for control-plane = Ready ⏳
+ • Ready after 15s 💚
+Set kubectl context to "kind-agent-relay"
+You can now use your cluster with:
+
+kubectl cluster-info --context kind-agent-relay
+
+Have a nice day! 👋
+[RC=0]
+# CORRECTION: my intermediate hypothesis that kind.exe was stalled (posted
+# to the user while this command was still running) was WRONG, not
+# confirmed -- it never should have been stated as a conclusion. The real
+# result above (RC=0, real ✓ Ready after 15s) shows it was a slow first
+# node-image pull that produces no visible docker network/image/event
+# until it completes, combined with record()'s buffered (non-streamed)
+# capture hiding kind's own progress output in the meantime. Confirmed for
+# real: agent-relay-control-plane (kindest/node:v1.34.0) is up, network
+# 'kind' exists, `kind get clusters` lists agent-relay.
+$ docker ps --filter name=agent-relay-control-plane --format '{{.Names}}\t{{.Image}}\t{{.Status}}'
+agent-relay-control-plane	kindest/node:v1.34.0	Up 7 minutes
+[RC=0]
+ASSERT PASS: control-plane is a real kindest/node container (not mocked/CI-only)
+[RC=0]
+$ kind load docker-image agent-relay:local --name agent-relay
+Image: "agent-relay:local" with ID "sha256:01f78e01a05a3cce9f306b5c268688a668faa2d5650449786fb63b66aa16c3ab" not yet present on node "agent-relay-control-plane", loading...
+[RC=0]
+$ kubectl apply -k k8s/
+namespace/agent-relay created
+configmap/agent-relay-config created
+secret/postgres-credentials created
+service/agent-relay created
+service/postgres created
+deployment.apps/agent-relay created
+statefulset.apps/postgres created
+[RC=0]
+$ kubectl -n agent-relay rollout status statefulset/postgres --timeout=180s
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 1 new pods have been updated...
+[RC=0]
+$ kubectl -n agent-relay rollout status deployment/agent-relay --timeout=180s
+Waiting for deployment "agent-relay" rollout to finish: 0 of 2 updated replicas are available...
+Waiting for deployment "agent-relay" rollout to finish: 1 of 2 updated replicas are available...
+deployment "agent-relay" successfully rolled out
+[RC=0]
+$ kubectl -n agent-relay get pods,svc,pvc -o wide
+NAME                               READY   STATUS    RESTARTS      AGE    IP           NODE                        NOMINATED NODE   READINESS GATES
+pod/agent-relay-6c76694c5b-8lq8h   1/1     Running   1 (50s ago)   111s   10.244.0.6   agent-relay-control-plane   <none>           <none>
+pod/agent-relay-6c76694c5b-lc6zl   1/1     Running   1 (50s ago)   111s   10.244.0.5   agent-relay-control-plane   <none>           <none>
+pod/postgres-0                     1/1     Running   0             111s   10.244.0.8   agent-relay-control-plane   <none>           <none>
+
+NAME                  TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE    SELECTOR
+service/agent-relay   ClusterIP   10.96.180.160   <none>        8000/TCP   111s   app.kubernetes.io/name=agent-relay
+service/postgres      ClusterIP   10.96.223.173   <none>        5432/TCP   111s   app.kubernetes.io/name=postgres
+
+NAME                                    STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE    VOLUMEMODE
+persistentvolumeclaim/data-postgres-0   Bound    pvc-5268eba8-6f87-4511-bf34-e5209659c614   1Gi        RWO            standard       <unset>                 111s   Filesystem
+[RC=0]
+port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)
+port-forward pid=234
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)
+8080/ready && echo && break; sleep 1; done
+scripts/evidence_lib.sh: eval: line 60: syntax error near unexpected token `('
+scripts/evidence_lib.sh: eval: line 60: `for i in $(seq 1 30); do curl -fsS http://127.0.0.1:port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)'
+[RC=2]
+$ RELAY_BASE_URL=http://127.0.0.1:port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)
+8080 RELAY_REQUIRE_SERVER=1 uv run pytest tests/integration -v
+scripts/evidence_lib.sh: eval: line 60: syntax error near unexpected token `('
+scripts/evidence_lib.sh: eval: line 60: `RELAY_BASE_URL=http://127.0.0.1:port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)'
+[RC=2]
+# CORRECTION: the two syntax errors above (and the failed port-forward, see
+# /tmp/ev04_pf.log -> 'unknown shorthand flag: a in -ano') are real, kept
+# as-is. Root cause: port_free_or_pick() tee'd its log line to stdout AS
+# WELL AS the file, so `PF_PORT=$(port_free_or_pick ...)` captured both
+# lines instead of just the port number, corrupting every later use of
+# $PF_PORT. Fixed in scripts/evidence_lib.sh: the log line now goes to the
+# file only; stdout carries only the bare port number. No process was left
+# running (checked via ps).
+port check: 8080 is free (netstat -ano | grep ":8080 " -> no match)
+# port-forward port (clean capture): 8080
+# port-forward pid=1370
+$ for i in $(seq 1 30); do curl -fsS http://127.0.0.1:8080/ready && echo && break; sleep 1; done
+{"status":"ready"}
+[RC=0]
+$ RELAY_BASE_URL=http://127.0.0.1:8080 RELAY_REQUIRE_SERVER=1 uv run pytest tests/integration -v
+============================= test session starts =============================
+platform win32 -- Python 3.11.9, pytest-9.1.1, pluggy-1.6.0 -- C:\Users\Ellie Pro\Documents\Projets Data\projets_github\ai_dev_tools_zoomcamp_hws\03-deployment\.venv\Scripts\python.exe
+cachedir: .pytest_cache
+rootdir: C:\Users\Ellie Pro\Documents\Projets Data\projets_github\ai_dev_tools_zoomcamp_hws\03-deployment
+configfile: pyproject.toml
+plugins: anyio-4.14.2
+collecting ... collected 5 items
+
+tests/integration/test_task_flow.py::test_health_ready_and_dashboard PASSED [ 20%]
+tests/integration/test_task_flow.py::test_two_agents_exchange_task_and_result PASSED [ 40%]
+tests/integration/test_task_flow.py::test_unauthenticated_calls_are_rejected PASSED [ 60%]
+tests/integration/test_task_flow.py::test_empty_inbox_returns_204 PASSED [ 80%]
+tests/integration/test_task_flow.py::test_shipped_worker_process_completes_task PASSED [100%]
+
+============================== 5 passed in 3.48s ==============================
+[RC=0]
+$ kubectl -n agent-relay exec postgres-0 -- psql -U relay -d relay -c 'select id, status from tasks order by id'
+                  id                   |  status   
+---------------------------------------+-----------
+ task_a63edeb7a18640cfb6fa838b511e8b8b | completed
+ task_ccc19b887da143cfbef34e738c910de6 | completed
+(2 rows)
+
+[RC=0]
+# IDS_BEFORE=task_a63edeb7a18640cfb6fa838b511e8b8b
+task_ccc19b887da143cfbef34e738c910de6
+$ kubectl -n agent-relay delete pod postgres-0
+pod "postgres-0" deleted from agent-relay namespace
+[RC=0]
+$ kubectl -n agent-relay rollout status statefulset/postgres --timeout=180s
+Waiting for 1 pods to be ready...
+partitioned roll out complete: 1 new pods have been updated...
+[RC=0]
+$ kubectl -n agent-relay exec postgres-0 -- psql -U relay -d relay -c 'select id, status from tasks order by id'
+                  id                   |  status   
+---------------------------------------+-----------
+ task_a63edeb7a18640cfb6fa838b511e8b8b | completed
+ task_ccc19b887da143cfbef34e738c910de6 | completed
+(2 rows)
+
+[RC=0]
+# IDS_BEFORE=task_a63edeb7a18640cfb6fa838b511e8b8b
+task_ccc19b887da143cfbef34e738c910de6
+# IDS_AFTER=task_a63edeb7a18640cfb6fa838b511e8b8b
+task_ccc19b887da143cfbef34e738c910de6
+ASSERT PASS: task ids identical before/after deleting and recreating postgres-0 (PVC persistence)
+[RC=0]
+# port-forward stopped (pid=1370). kind cluster 'agent-relay' is intentionally left running for phase 3c (act v1/v2 reuse it).
+$ kubectl -n agent-relay logs agent-relay-6c76694c5b-8lq8h --previous --tail=50
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/psycopg/connection.py", line 122, in connect
+    raise last_ex.with_traceback(None)
+sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "10.96.223.173", port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[RC=0]
+$ kubectl -n agent-relay logs agent-relay-6c76694c5b-lc6zl --previous --tail=50
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 146, in __init__
+    Connection._handle_dbapi_exception_noconnection(
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 2450, in _handle_dbapi_exception_noconnection
+    raise sqlalchemy_exception.with_traceback(exc_info[2]) from e
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 144, in __init__
+    self._dbapi_connection = engine.raw_connection()
+                             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/base.py", line 3319, in raw_connection
+    return self.pool.connect()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 448, in connect
+    return _ConnectionFairy._checkout(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 1272, in _checkout
+    fairy = _ConnectionRecord.checkout(pool)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 712, in checkout
+    rec = pool._do_get()
+          ^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/impl.py", line 178, in _do_get
+    with util.safe_reraise():
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/impl.py", line 176, in _do_get
+    return self._create_connection()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 389, in _create_connection
+    return _ConnectionRecord(self)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 674, in __init__
+    self.__connect()
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 900, in __connect
+    with util.safe_reraise():
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/util/langhelpers.py", line 122, in __exit__
+    raise exc_value.with_traceback(exc_tb)
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/pool/base.py", line 896, in __connect
+    self.dbapi_connection = connection = pool._invoke_creator(self)
+                                         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/create.py", line 667, in connect
+    return dialect.connect(*cargs_tup, **cparams)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/sqlalchemy/engine/default.py", line 630, in connect
+    return self.loaded_dbapi.connect(*cargs, **cparams)  # type: ignore[no-any-return]  # NOQA: E501
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/.venv/lib/python3.11/site-packages/psycopg/connection.py", line 122, in connect
+    raise last_ex.with_traceback(None)
+sqlalchemy.exc.OperationalError: (psycopg.OperationalError) connection failed: connection to server at "10.96.223.173", port 5432 failed: Connection refused
+	Is the server running on that host and accepting TCP/IP connections?
+(Background on this error at: https://sqlalche.me/e/20/e3q8)
+[RC=0]
+$ kubectl -n agent-relay describe pod agent-relay-6c76694c5b-8lq8h | sed -n '/Last State/,/^Ready/p'
+    Last State:     Terminated
+      Reason:       Error
+      Exit Code:    1
+      Started:      Fri, 25 Sep 2026 17:07:10 +0200
+      Finished:     Fri, 25 Sep 2026 17:08:11 +0200
+    Ready:          True
+    Restart Count:  1
+    Limits:
+      memory:  256Mi
+    Requests:
+      cpu:      50m
+      memory:   96Mi
+    Liveness:   http-get http://:http/health delay=0s timeout=3s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:http/ready delay=0s timeout=3s period=5s #success=1 #failure=3
+    Startup:    http-get http://:http/health delay=0s timeout=1s period=2s #success=1 #failure=60
+    Environment Variables from:
+      agent-relay-config  ConfigMap  Optional: false
+    Environment:
+      RELAY_DATABASE_URL:  <set to the key 'RELAY_DATABASE_URL' in secret 'postgres-credentials'>  Optional: false
+    Mounts:
+      /tmp from tmp (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-zd9vk (ro)
+Conditions:
+  Type                        Status
+  PodReadyToStartContainers   True 
+  Initialized                 True 
+  Ready                       True 
+  ContainersReady             True 
+  PodScheduled                True 
+Volumes:
+  tmp:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     
+    SizeLimit:  <unset>
+  kube-api-access-zd9vk:
+    Type:                    Projected (a volume that contains injected data from multiple sources)
+    TokenExpirationSeconds:  3607
+    ConfigMapName:           kube-root-ca.crt
+    Optional:                false
+    DownwardAPI:             true
+QoS Class:                   Burstable
+Node-Selectors:              <none>
+Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists for 300s
+                             node.kubernetes.io/unreachable:NoExecute op=Exists for 300s
+Events:
+  Type     Reason     Age                    From               Message
+  ----     ------     ----                   ----               -------
+  Normal   Scheduled  7m9s                   default-scheduler  Successfully assigned agent-relay/agent-relay-6c76694c5b-8lq8h to agent-relay-control-plane
+  Warning  Unhealthy  6m19s (x25 over 7m7s)  kubelet            Startup probe failed: Get "http://10.244.0.6:8000/health": dial tcp 10.244.0.6:8000: connect: connection refused
+  Normal   Pulled     6m8s (x2 over 7m9s)    kubelet            Container image "agent-relay:local" already present on machine
+  Normal   Created    6m8s (x2 over 7m9s)    kubelet            Created container: app
+  Normal   Started    6m8s (x2 over 7m9s)    kubelet            Started container app
+[RC=0]
+$ kubectl -n agent-relay describe pod agent-relay-6c76694c5b-8lq8h | sed -n '/^Events/,$p'
+Events:
+  Type     Reason     Age                    From               Message
+  ----     ------     ----                   ----               -------
+  Normal   Scheduled  7m10s                  default-scheduler  Successfully assigned agent-relay/agent-relay-6c76694c5b-8lq8h to agent-relay-control-plane
+  Warning  Unhealthy  6m20s (x25 over 7m8s)  kubelet            Startup probe failed: Get "http://10.244.0.6:8000/health": dial tcp 10.244.0.6:8000: connect: connection refused
+  Normal   Pulled     6m9s (x2 over 7m10s)   kubelet            Container image "agent-relay:local" already present on machine
+  Normal   Created    6m9s (x2 over 7m10s)   kubelet            Created container: app
+  Normal   Started    6m9s (x2 over 7m10s)   kubelet            Started container app
+[RC=0]
+# CAUSE: both app replicas' previous container crashed once (Exit Code 1).
+# --previous logs show sqlalchemy.exc.OperationalError: connection to
+# postgres at 10.96.223.173:5432 refused, at process startup (module-level
+# init_db()). describe pod's Events show the startup probe failing
+# repeatedly with 'connection refused' for ~1 minute (Started 17:07:10 ->
+# Finished 17:08:11), then the container was recreated and started again
+# (Pulled/Created/Started x2), after which it stayed Ready. RESTARTS=1
+# matches this single crash-and-recover cycle, not an ongoing issue.
+# CORRECTION: the CAUSE note above says 'at process startup (module-level
+# init_db())' -- that detail is NOT actually shown in the captured output:
+# --tail=50 truncated the top of the traceback (note the dangling '^^^'
+# on the first captured line), so the calling frame is not visible here.
+# The only thing these outputs actually establish is: a psycopg connection
+# to postgres was refused, once, early enough to crash the container before
+# it ever became Ready. Where in the code that call came from is not
+# evidenced by this capture.
+# CORRECTION: in the second query block above (the one right after
+# 'kubectl rollout status statefulset/postgres' post-recreation), IDS_BEFORE
+# was NOT recaptured by command substitution -- it was retyped by hand as a
+# literal string in a new Bash tool call, because shell variables don't
+# survive across tool calls (same root cause as the toolchain.sh PATH bug
+# noted earlier in this file). Bounded risk, not zero risk: a transcription
+# mistake would have made the ASSERT below FAIL (strings wouldn't match),
+# never pass incorrectly -- so the PASS is still trustworthy, but the value
+# was hand-copied, not machine-captured, in that one spot. From here on,
+# cross-call state goes to docs/evidence/.state/ (gitignored) instead.

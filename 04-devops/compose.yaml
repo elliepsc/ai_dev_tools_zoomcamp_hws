@@ -1,0 +1,56 @@
+name: order-tracker
+
+# App + observability stack. The telemetry backends live in observability/compose.yaml.
+include:
+  - observability/compose.yaml
+
+services:
+  app:
+    image: order-tracker:${ORDER_TRACKER_TAG:-local}
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-dev}
+    ports:
+      - "127.0.0.1:${ORDER_TRACKER_PORT:-8000}:8000"
+    environment:
+      ORDER_DB_PATH: /data/orders.db
+      DEPLOYMENT_ENVIRONMENT: ${DEPLOYMENT_ENVIRONMENT:-local}
+      OTEL_SERVICE_NAME: order-tracker
+      # otlp (default) -> Collector; console -> stdout (Question 2); none -> off
+      OTEL_TRACES_EXPORTER: ${OTEL_EXPORTER:-otlp}
+      OTEL_METRICS_EXPORTER: ${OTEL_EXPORTER:-otlp}
+      OTEL_LOGS_EXPORTER: ${OTEL_EXPORTER:-otlp}
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+      OTEL_METRIC_EXPORT_INTERVAL: "5000"
+    volumes:
+      - orders:/data
+    depends_on:
+      app-volume-init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # One-shot: the app now runs as uid 10001; volumes created by the starter
+  # (root-owned orders.db) must be handed over, without deleting any data.
+  app-volume-init:
+    image: order-tracker:${ORDER_TRACKER_TAG:-local}
+    user: root
+    entrypoint: ["chown", "-R", "10001:10001", "/data"]
+    volumes:
+      - orders:/data
+    restart: "no"
+
+volumes:
+  orders:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${ORDER_TRACKER_SUBNET:-10.215.24.0/24}

@@ -1,0 +1,43 @@
+=== 2026-09-25T15:33:22Z (UTC) ===
+OS: MINGW64_NT-10.0-26200 PC_Ellie 3.4.10-bc1f6498.x86_64 2024-09-15 15:08 UTC x86_64 Msys
+cwd: /c/Users/Ellie Pro/Documents/Projets Data/projets_github/ai_dev_tools_zoomcamp_hws/03-deployment
+
+$ source scripts/toolchain.sh
+OK   kind: kind version 0.30.0
+OK   kubectl: Client Version: v1.34.1
+OK   uv: uv 0.12.18 (01cb90c1a 2026-09-22 x86_64-pc-windows-msvc)
+INFO act: act version 0.2.89
+OK   docker: Docker version 27.5.1, build 9f9e405
+OK   docker compose: Docker Compose version v2.32.4-desktop.1
+toolchain.sh: OK — MSYS_NO_PATHCONV=1, PATH pinné (kubectl134, uv winget, kind, act)
+[RC=0]
+ASSERT PASS: toolchain.sh sourced cleanly (RC=0)
+[RC=0]
+ASSERT PASS: command -v uv kind kubectl act all resolve
+[RC=0]
+ASSERT PASS: uv --version matches ^uv 0.12.
+[RC=0]
+ASSERT PASS: kind --version matches 0.30.0
+[RC=0]
+ASSERT PASS: kubectl version --client matches v1.34.
+[RC=0]
+# Proof gathered on GitHub (not locally, since act is blocked on this machine -- see 05-act-v1.txt). Temporary branch hw3-gating-test-tmp pushed to origin, containing exactly one commit on top of hw3-phase3-evidence: a deliberately broken assertion in tests/integration/test_task_flow.py (test_health_ready_and_dashboard now expects /health to return {"status": "DELIBERATELY-BROKEN-FOR-GATING-PROOF"}).
+$ git log --oneline -1 origin/hw3-gating-test-tmp
+daccab9 test(hw3): TEMPORARY broken assertion for gating proof (do not merge)
+[RC=0]
+$ git diff hw3-phase3-evidence..hw3-gating-test-tmp -- tests/integration/test_task_flow.py
+diff --git a/03-deployment/tests/integration/test_task_flow.py b/03-deployment/tests/integration/test_task_flow.py
+index 9821949..068fff8 100644
+--- a/03-deployment/tests/integration/test_task_flow.py
++++ b/03-deployment/tests/integration/test_task_flow.py
+@@ -23,7 +23,7 @@ def register(client: httpx.Client, name: str) -> tuple[str, dict[str, str]]:
+ 
+ 
+ def test_health_ready_and_dashboard(client: httpx.Client):
+-    assert client.get("/health").json() == {"status": "ok"}
++    assert client.get("/health").json() == {"status": "DELIBERATELY-BROKEN-FOR-GATING-PROOF"}
+     assert client.get("/ready").json() == {"status": "ready"}
+     page = client.get("/")
+     assert page.status_code == 200
+[RC=0]
+# Waiting for the user to trigger workflow_dispatch on hw3-gating-test-tmp via the Actions UI and report the run's job statuses; will append the real result here (job test status, job deploy status, run URL) before committing this file.

@@ -1,0 +1,20 @@
+{
+  "id": "INC-20260930-125626-5af5",
+  "fingerprint": "5f0e1c2a9b7d4e31",
+  "state": "closed",
+  "opened_at": "2026-09-30T12:56:26+00:00",
+  "opened_ts": 1790772986.2589493,
+  "alertname": "OrderTracker5xx",
+  "route": "/api/orders/{order_id}",
+  "updated_at": "2026-09-30T12:57:30+00:00",
+  "agent": "claude-code",
+  "agent_started_ts": 1790772986.738743,
+  "classification": "real_incident",
+  "proposed_action": "patch",
+  "final_message": "INC-20260930-125626-5af5: /api/orders/{order_id} returns 500 for express-1002.\nCause: order_detail used placed_at.replace(day=day+2), which overflows near month end (ValueError). It is a latent bug hit by the seed data, not a deploy regression.\nFix: use placed_at + timedelta(days=2), plus a date-independent regression test. Full suite passes (6 passed).\nVerdict: patch proposed, small local fix, confidence 0.97; replay GET /api/orders/express-1002 after deploy.",
+  "escalated_at": "2026-09-30T12:56:56+00:00",
+  "escalation_reason": "deploy-fix.sh failed (exit 3); nothing changed in production if exit 3",
+  "closed_at": "2026-09-30T12:57:30+00:00",
+  "human_disposition": "The deploy guard refused to deploy because tracked incident records had been modified in the working tree. This was safe: production did not change. Responder fixed in 33e1472 (the guard now ignores incident-response/incidents/). Fix branch discarded, incident re-run.",
+  "closed_by": "claude-sandbox-run"
+}

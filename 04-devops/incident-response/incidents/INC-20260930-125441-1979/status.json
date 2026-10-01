@@ -1,0 +1,17 @@
+{
+  "id": "INC-20260930-125441-1979",
+  "fingerprint": "5f0e1c2a9b7d4e31",
+  "state": "closed",
+  "opened_at": "2026-09-30T12:54:41+00:00",
+  "opened_ts": 1790772881.6011477,
+  "alertname": "OrderTracker5xx",
+  "route": "/api/orders/{order_id}",
+  "updated_at": "2026-09-30T12:55:58+00:00",
+  "agent": "claude-code",
+  "agent_started_ts": 1790772881.9661639,
+  "escalated_at": "2026-09-30T12:55:22+00:00",
+  "escalation_reason": "responder pipeline error: AttributeError(\"'str' object has no attribute 'get'\")",
+  "closed_at": "2026-09-30T12:55:58+00:00",
+  "human_disposition": "Responder bug (AttributeError in the new transcript summary). The pipeline failed safe: it escalated and nothing was deployed. Fixed in 95b99c8, and the incident was re-run.",
+  "closed_by": "claude-sandbox-run"
+}

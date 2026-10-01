@@ -1,0 +1,14 @@
+.venv/
+.pytest_cache/
+__pycache__/
+*.pyc
+data/
+.env
+
+# incident responder
+incident-response/.worktrees/
+incident-response/.venv/
+
+# incident responder: keep readable evidence, not raw dumps
+incident-response/incidents/*/agent/agent-transcript.jsonl
+incident-response/incidents/*/evidence/evidence.json

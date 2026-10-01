@@ -1,0 +1,20 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+# Metrics arrive by OTLP push from the Collector; allow slightly late samples.
+storage:
+  tsdb:
+    out_of_order_time_window: 30m
+
+otlp:
+  # service.name -> job, service.instance.id -> instance (automatic).
+  # Keep the deployed version and environment as labels to tie errors to a release.
+  promote_resource_attributes:
+    - service.version
+    - deployment.environment.name
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

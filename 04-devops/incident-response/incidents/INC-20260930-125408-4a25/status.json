@@ -1,0 +1,17 @@
+{
+  "id": "INC-20260930-125408-4a25",
+  "fingerprint": "2eb1c12796e548de",
+  "state": "closed",
+  "opened_at": "2026-09-30T12:54:08+00:00",
+  "opened_ts": 1790772848.1771152,
+  "alertname": "ResponderTest",
+  "route": null,
+  "updated_at": "2026-09-30T12:54:15+00:00",
+  "agent": "claude-code",
+  "agent_started_ts": 1790772848.4453552,
+  "classification": "test_notification",
+  "proposed_action": "none",
+  "final_message": "INC-20260930-125408-4a25: the alert is labelled test=\"true\" (ResponderTest).\nThere are no 5xx responses, error logs or error traces. /healthz returns 200 and the container is healthy.\nNothing was changed and there is nothing to fix.\nVerdict: test_notification, no action needed.",
+  "closed_at": "2026-09-30T12:54:15+00:00",
+  "note": "no action required"
+}
